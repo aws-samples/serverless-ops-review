@@ -1,0 +1,313 @@
+{
+    "Comment": "This StateMachine fetches information related to Lambda functions for the purpose of AWS provided Operational Review.",
+    "StartAt": "MapSelectedFunctions",
+    "States": {
+      "ErrorCatchSelected": {
+        "End": true,
+        "Parameters": {
+          "Body.$": "$",
+          "Bucket": "reports-ap-southeast-1-808632258563",
+          "Key.$": "States.Format('error-selected-{}.json', $$.State.EnteredTime)"
+        },
+        "Resource": "arn:aws:states:::aws-sdk:s3:putObject",
+        "Type": "Task"
+      },
+      "MapSelectedFunctions": {
+        "Catch": [
+          {
+            "Comment": "Function not found error.",
+            "ErrorEquals": [
+              "States.TaskFailed"
+            ],
+            "Next": "ErrorCatchSelected"
+          }
+        ],
+        "ItemProcessor": {
+          "ProcessorConfig": {
+            "Mode": "INLINE"
+          },
+          "StartAt": "GetFunction",
+          "States": {
+            "GetFunction": {
+              "InputPath": "$",
+              "Next": "SelectedGetFunctionConcurrency",
+              "Parameters": {
+                "FunctionName.$": "$"
+              },
+              "Resource": "arn:aws:states:::aws-sdk:lambda:getFunction",
+              "Type": "Task"
+            },
+            "IsVpcEnabledChoiceSelected": {
+              "Choices": [
+                {
+                  "And": [
+                    {
+                      "Variable": "$.Configuration.VpcConfig.VpcId",
+                      "IsPresent": true
+                    },
+                    {
+                      "Not": {
+                        "Variable": "$.Configuration.VpcConfig.VpcId",
+                        "StringMatches": ""
+                      }
+                    }
+                  ],
+                  "Next": "IsRuntimePresentVpcEnabledSelected"
+                }
+              ],
+              "Default": "IsRuntimePresentNoVpcEnabledSelected",
+              "Type": "Choice"
+            },
+            "IsRuntimePresentNoVpcEnabledSelected": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Not": {
+                    "Variable": "$.Configuration.Runtime",
+                    "IsPresent": true
+                  },
+                  "Next": "NoVpcEnabledSelectedAddRuntime"
+                }
+              ],
+              "Default": "NoVpcEnabledSelected"
+            },
+            "NoVpcEnabledSelectedAddRuntime": {
+              "Type": "Pass",
+              "End": true,
+              "Parameters": {
+                "Architectures.$": "States.ArrayGetItem($.Configuration.Architectures, 0)",
+                "CodeSize.$": "$.Configuration.CodeSize",
+                "EphemeralStorage.$": "$.Configuration.EphemeralStorage.Size",
+                "FunctionArn.$": "$.Configuration.FunctionArn",
+                "FunctionName.$": "$.Configuration.FunctionName",
+                "MemorySize.$": "$.Configuration.MemorySize",
+                "PackageType.$": "$.Configuration.PackageType",
+                "ProvisionedConcurrencyConfigs.$": "$.Configuration.FunctionProvisionedConcurrency.ProvisionedConcurrencyConfigs",
+                "ReservedConcurrency.$": "$.Configuration.FunctionReservedConcurrency",
+                "Role.$": "$.Configuration.Role",
+                "Runtime": "Container",
+                "SnapStartOn.$": "$.Configuration.SnapStart.ApplyOn",
+                "SnapStartOptimizationStatus.$": "$.Configuration.SnapStart.OptimizationStatus",
+                "Timeout.$": "$.Configuration.Timeout",
+                "TracingConfig.$": "$.Configuration.TracingConfig.Mode"
+              }
+            },
+            "IsRuntimePresentVpcEnabledSelected": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Not": {
+                    "Variable": "$.Configuration.Runtime",
+                    "IsPresent": true
+                  },
+                  "Next": "VpcEnabledSelectedAddRuntime"
+                }
+              ],
+              "Default": "IsVpcEnabledSelected"
+            },
+            "VpcEnabledSelectedAddRuntime": {
+              "Type": "Pass",
+              "End": true,
+              "Parameters": {
+                "Architectures.$": "States.ArrayGetItem($.Configuration.Architectures, 0)",
+                "CodeSize.$": "$.Configuration.CodeSize",
+                "EphemeralStorage.$": "$.Configuration.EphemeralStorage.Size",
+                "FunctionArn.$": "$.Configuration.FunctionArn",
+                "FunctionName.$": "$.Configuration.FunctionName",
+                "MemorySize.$": "$.Configuration.MemorySize",
+                "PackageType.$": "$.Configuration.PackageType",
+                "ProvisionedConcurrencyConfigs.$": "$.Configuration.FunctionProvisionedConcurrency.ProvisionedConcurrencyConfigs",
+                "ReservedConcurrency.$": "$.Configuration.FunctionReservedConcurrency",
+                "Role.$": "$.Configuration.Role",
+                "Runtime": "Container",
+                "SecurityGroupIds.$": "$.Configuration.VpcConfig.SecurityGroupIds",
+                "SnapStartOn.$": "$.Configuration.SnapStart.ApplyOn",
+                "SnapStartOptimizationStatus.$": "$.Configuration.SnapStart.OptimizationStatus",
+                "SubnetIds.$": "$.Configuration.VpcConfig.SubnetIds",
+                "Timeout.$": "$.Configuration.Timeout",
+                "TracingConfig.$": "$.Configuration.TracingConfig.Mode",
+                "VpcId.$": "$.Configuration.VpcConfig.VpcId"
+              }
+            },
+            "IsVpcEnabledSelected": {
+              "End": true,
+              "Parameters": {
+                "Architectures.$": "States.ArrayGetItem($.Configuration.Architectures, 0)",
+                "CodeSize.$": "$.Configuration.CodeSize",
+                "EphemeralStorage.$": "$.Configuration.EphemeralStorage.Size",
+                "FunctionArn.$": "$.Configuration.FunctionArn",
+                "FunctionName.$": "$.Configuration.FunctionName",
+                "MemorySize.$": "$.Configuration.MemorySize",
+                "PackageType.$": "$.Configuration.PackageType",
+                "ProvisionedConcurrencyConfigs.$": "$.Configuration.FunctionProvisionedConcurrency.ProvisionedConcurrencyConfigs",
+                "ReservedConcurrency.$": "$.Configuration.FunctionReservedConcurrency",
+                "Role.$": "$.Configuration.Role",
+                "Runtime.$": "$.Configuration.Runtime",
+                "SecurityGroupIds.$": "$.Configuration.VpcConfig.SecurityGroupIds",
+                "SnapStartOn.$": "$.Configuration.SnapStart.ApplyOn",
+                "SnapStartOptimizationStatus.$": "$.Configuration.SnapStart.OptimizationStatus",
+                "SubnetIds.$": "$.Configuration.VpcConfig.SubnetIds",
+                "Timeout.$": "$.Configuration.Timeout",
+                "TracingConfig.$": "$.Configuration.TracingConfig.Mode",
+                "VpcId.$": "$.Configuration.VpcConfig.VpcId"
+              },
+              "Type": "Pass"
+            },
+            "ListProvisionedConcurrencyConfigs": {
+              "Next": "IsVpcEnabledChoiceSelected",
+              "Parameters": {
+                "FunctionName.$": "$.Configuration.FunctionName"
+              },
+              "Resource": "arn:aws:states:::aws-sdk:lambda:listProvisionedConcurrencyConfigs",
+              "ResultPath": "$.Configuration.FunctionProvisionedConcurrency",
+              "Type": "Task"
+            },
+            "NoVpcEnabledSelected": {
+              "End": true,
+              "Parameters": {
+                "Architectures.$": "States.ArrayGetItem($.Configuration.Architectures, 0)",
+                "CodeSize.$": "$.Configuration.CodeSize",
+                "EphemeralStorage.$": "$.Configuration.EphemeralStorage.Size",
+                "FunctionArn.$": "$.Configuration.FunctionArn",
+                "FunctionName.$": "$.Configuration.FunctionName",
+                "MemorySize.$": "$.Configuration.MemorySize",
+                "PackageType.$": "$.Configuration.PackageType",
+                "ProvisionedConcurrencyConfigs.$": "$.Configuration.FunctionProvisionedConcurrency.ProvisionedConcurrencyConfigs",
+                "ReservedConcurrency.$": "$.Configuration.FunctionReservedConcurrency",
+                "Role.$": "$.Configuration.Role",
+                "Runtime.$": "$.Configuration.Runtime",
+                "SnapStartOn.$": "$.Configuration.SnapStart.ApplyOn",
+                "SnapStartOptimizationStatus.$": "$.Configuration.SnapStart.OptimizationStatus",
+                "Timeout.$": "$.Configuration.Timeout",
+                "TracingConfig.$": "$.Configuration.TracingConfig.Mode"
+              },
+              "Type": "Pass"
+            },
+            "SelectedGetFunctionConcurrency": {
+              "Next": "ListProvisionedConcurrencyConfigs",
+              "Parameters": {
+                "FunctionName.$": "$.Configuration.FunctionName"
+              },
+              "Resource": "arn:aws:states:::aws-sdk:lambda:getFunctionConcurrency",
+              "ResultPath": "$.Configuration.FunctionReservedConcurrency",
+              "Type": "Task"
+            }
+          }
+        },
+        "ItemsPath": "$.Functions",
+        "Next": "S3PutSelected",
+        "Type": "Map"
+      },
+      "S3PutSelected": {
+        "Next": "GetRecommendations",
+        "Parameters": {
+          "Body.$": "$",
+          "Bucket": "${ReportBucketName}",
+          "Key.$": "States.Format('review-{}/selected-functions.json', $$.State.EnteredTime)"
+        },
+        "Resource": "arn:aws:states:::aws-sdk:s3:putObject",
+        "Type": "Task",
+        "ResultSelector": {
+          "Bucket": "${ReportBucketName}",
+          "Prefix.$": "States.Format('review-{}', $$.State.EnteredTime)",
+          "FunctionsObject": "selected-functions.json"
+        }
+      },
+      "GetRecommendations": {
+        "Type": "Task",
+        "Parameters": {},
+        "Resource": "arn:aws:states:::aws-sdk:computeoptimizer:getLambdaFunctionRecommendations",
+        "ResultPath": "$.Recommendations",
+        "Next": "RecommendationsToS3"
+      },
+      "RecommendationsToS3": {
+        "Type": "Task",
+        "Parameters": {
+          "Body.$": "$",
+          "Bucket.$": "$.Bucket",
+          "Key.$": "States.Format('{}/recommendations.json', $.Prefix)"
+        },
+        "Resource": "arn:aws:states:::aws-sdk:s3:putObject",
+        "Next": "FilterRecommendationsOutput",
+        "ResultPath": null
+      },
+      "FilterRecommendationsOutput": {
+        "Type": "Pass",
+        "Next": "ListEventSourceMappings",
+        "Parameters": {
+          "Bucket.$": "$.Bucket",
+          "FunctionsObject.$": "$.FunctionsObject",
+          "Prefix.$": "$.Prefix"
+        }
+      },
+      "ListEventSourceMappings": {
+        "Type": "Task",
+        "Next": "EventSourceMappingsToS3",
+        "Parameters": {},
+        "Resource": "arn:aws:states:::aws-sdk:lambda:listEventSourceMappings",
+        "ResultPath": "$.EventSourceMappings",
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "States.ALL"
+            ],
+            "IntervalSeconds": 1,
+            "MaxAttempts": 5,
+            "BackoffRate": 1.5
+          }
+        ]
+      },
+      "EventSourceMappingsToS3": {
+        "Type": "Task",
+        "Next": "RemoveMappingsFromInput",
+        "Parameters": {
+          "Body.$": "$",
+          "Bucket.$": "$.Bucket",
+          "Key.$": "States.Format('{}/esms.json', $.Prefix)"
+        },
+        "Resource": "arn:aws:states:::aws-sdk:s3:putObject",
+        "ResultPath": null
+      },
+      "RemoveMappingsFromInput": {
+        "Type": "Pass",
+        "Next": "ListLambdaQuotas",
+        "Parameters": {
+          "Bucket.$": "$.Bucket",
+          "FunctionsObject.$": "$.FunctionsObject",
+          "Prefix.$": "$.Prefix"
+        }
+      },
+      "ListLambdaQuotas": {
+        "Type": "Task",
+        "Next": "GenerateReport",
+        "Parameters": {
+          "ServiceCode": "lambda"
+        },
+        "Resource": "arn:aws:states:::aws-sdk:servicequotas:listServiceQuotas",
+        "ResultPath": "$.ServiceQuotas"
+      },
+      "GenerateReport": {
+        "Type": "Task",
+        "Resource": "arn:aws:states:::lambda:invoke",
+        "Parameters": {
+          "Payload.$": "$",
+          "FunctionName": "${GenerateLambda}"
+        },
+        "Retry": [
+          {
+            "ErrorEquals": [
+              "Lambda.ServiceException",
+              "Lambda.AWSLambdaException",
+              "Lambda.SdkClientException",
+              "Lambda.TooManyRequestsException"
+            ],
+            "IntervalSeconds": 2,
+            "MaxAttempts": 6,
+            "BackoffRate": 2
+          }
+        ],
+        "End": true,
+        "OutputPath": "$.Payload"
+      }
+    }
+  }

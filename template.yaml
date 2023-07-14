@@ -1,0 +1,332 @@
+# Serverless Ops Review - Version: 1.0.0
+
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  Functions:
+    Type: CommaDelimitedList
+    Default: All
+    Description: If you want to check only specific functions, please insert their names here in the format of function1,function2,function3, etc. If left with default value, the check will run on all functions in the region.
+
+Conditions:
+  FunctionsNotSet: !Equals [!Select [0, !Ref Functions], "All"]
+  FunctionsSet: !Not [!Equals [!Select [0, !Ref Functions], "All"]]
+
+Mappings:
+  ActRuntimes: 
+    AllRuntimes:
+      Runtimes: 'python3.10,python3.9,nodejs18.x,nodejs16.x,java17,java11,dotnet7,dotnet6,ruby3.2,go1.x,provided.al2,Container'
+
+Resources:
+############################################### Resources for All functions reporting ###############################################
+  MainStateMachineAll:
+    Condition: FunctionsNotSet
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Type: EXPRESS
+      DefinitionUri: src/sfn/state-machine.asl.json
+      Role: !GetAtt MainStateMachineRole.Arn
+      DefinitionSubstitutions:
+        ReportBucketName: !Ref ReportBucket
+        GenerateLambda: !GetAtt GenerateReportFunctionAll.Arn
+        GenPresignLambda: !GetAtt GeneratePresigns.Arn
+      Logging:
+        Level: ALL
+        IncludeExecutionData: true
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt SfnLogGroup.Arn
+      Events:       
+        CfnCompleteTrigger:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              source: [aws.cloudformation]
+              detail-type: [CloudFormation Stack Status Change]
+              resources: [!Ref AWS::StackId]
+              detail:
+                stack-id: [!Ref AWS::StackId]
+                status-details: 
+                  status: [CREATE_COMPLETE, UPDATE_COMPLETE]
+
+  GenerateReportFunctionAll:
+    Condition: FunctionsNotSet
+    Type: AWS::Serverless::Function
+    Properties:
+      MemorySize: 256
+      Architectures: 
+        - arm64
+      Handler: app.handler
+      Runtime: python3.10
+      CodeUri: src/lambda/function-generate       
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref ReportBucket
+          REGION: !Ref AWS::Region
+          ACCOUNT: !Ref AWS::AccountId
+          ACT_RUNTIMES: !FindInMap [ ActRuntimes, AllRuntimes, Runtimes ]
+          STACK_NAME: !Ref AWS::StackName
+      Policies:
+        - Version: '2012-10-17' 
+          Statement:
+            - Effect: Allow
+              Action:
+                - 's3:GetObject'
+                - 's3:PutObject'
+              Resource: !Sub ${ReportBucket.Arn}/*
+            - Effect: Allow
+              Action:
+                - 'ec2:DescribeSubnets'
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - 'ssm:PutParameter'
+                - 'ssm:GetParameter'
+              Resource: '*'
+
+  GeneratePresigns:
+    Condition: FunctionsNotSet
+    Type: AWS::Serverless::Function
+    Properties:
+      Architectures: 
+        - arm64
+      Handler: app.handler
+      Runtime: python3.10
+      CodeUri: src/lambda/function-gen-presign       
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref ReportBucket
+      Policies:
+        - Version: '2012-10-17' 
+          Statement:
+            - Effect: Allow
+              Action:
+                - 's3:GetObject'
+                - 's3:PutObject'
+              Resource: !Sub ${ReportBucket.Arn}/*
+            - Effect: Allow
+              Action:
+                - 'ssm:PutParameter'
+                - 'ssm:GetParameter'
+              Resource: '*'
+
+#############################################################################################################################################
+
+  MainStateMachineSelected:
+    Condition: FunctionsSet
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Type: EXPRESS
+      DefinitionUri: src/sfn/state-machine-selected.asl.json
+      Role: !GetAtt MainStateMachineRole.Arn
+      DefinitionSubstitutions:
+        ReportBucketName: !Ref ReportBucket
+        GenerateLambda: !GetAtt GenerateReportFunctionSelected.Arn
+      Logging:
+        Level: ALL
+        IncludeExecutionData: true
+        Destinations:
+          - CloudWatchLogsLogGroup:
+              LogGroupArn: !GetAtt SfnLogGroup.Arn
+
+  FunctionSelected:
+    Condition: FunctionsSet
+    Type: AWS::Serverless::Function
+    Properties:
+      Architectures: 
+        - arm64
+      Handler: app.handler
+      Runtime: python3.10
+      CodeUri: src/lambda/function-selected       
+      Environment:
+        Variables:
+          SFN_SELECTED: !Ref MainStateMachineSelected
+      Policies:
+        - Version: '2012-10-17' 
+          Statement:
+            - Effect: Allow
+              Action:
+                - 'states:StartExecution'
+              Resource: !Ref MainStateMachineSelected
+        - Version: '2012-10-17' 
+          Statement:
+            - Effect: Allow
+              Action:
+                - 'cloudformation:DescribeStacks'
+              Resource: !Ref AWS::StackId
+      Events:       
+        CfnCompleteTrigger:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              source: [aws.cloudformation]
+              detail-type: [CloudFormation Stack Status Change]
+              resources: [!Ref AWS::StackId]
+              detail:
+                stack-id: [!Ref AWS::StackId]
+                status-details: 
+                  status: [CREATE_COMPLETE, UPDATE_COMPLETE]
+
+  GenerateReportFunctionSelected:
+    Condition: FunctionsSet
+    Type: AWS::Serverless::Function
+    Properties:
+      Architectures: 
+        - arm64
+      Handler: app.handler
+      Runtime: python3.10
+      CodeUri: src/lambda/function-generate-selected      
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref ReportBucket
+          REGION: !Ref AWS::Region
+          ACCOUNT: !Ref AWS::AccountId
+          ACT_RUNTIMES: !FindInMap [ ActRuntimes, AllRuntimes, Runtimes ]
+          STACK_NAME: !Ref AWS::StackName
+      Policies:
+        - Version: '2012-10-17' 
+          Statement:
+            - Effect: Allow
+              Action:
+                - 's3:GetObject'
+                - 's3:PutObject'
+              Resource: !Sub ${ReportBucket.Arn}/*
+            - Effect: Allow
+              Action:
+                - 'ec2:DescribeSubnets'
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - 'ssm:PutParameter'
+                - 'ssm:GetParameter'
+              Resource: '*'
+
+#############################################################################################################################################
+  
+            
+  
+############################################### Shared Resources ###############################################       
+
+  SfnLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/vendedlogs/states/Ops-Review-Sfn
+      RetentionInDays: 14
+
+  ReportBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub reports-${AWS::Region}-${AWS::AccountId}
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldObjects
+            Status: Enabled
+            ExpirationInDays: 30
+
+  MainStateMachineRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - states.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: CloudWatchLogsDeliveryFullAccessPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - 'logs:CreateLogDelivery'
+                  - 'logs:GetLogDelivery'
+                  - 'logs:UpdateLogDelivery'
+                  - 'logs:DeleteLogDelivery'
+                  - 'logs:ListLogDeliveries'
+                  - 'logs:PutResourcePolicy'
+                  - 'logs:DescribeResourcePolicies'
+                  - 'logs:DescribeLogGroups'
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                Resource: '*'
+        - PolicyName: S3Put
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 
+                - 's3:PutObject'
+                Resource: !Sub arn:aws:s3:::${ReportBucket}/*
+        - PolicyName: LambdaRead
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+            -
+              Effect: Allow
+              Action:
+                - 'lambda:ListFunctions'
+                - 'lambda:GetFunction'
+                - 'lambda:GetFunctionConcurrency'
+                - 'lambda:ListProvisionedConcurrencyConfigs'
+                - 'lambda:ListEventSourceMappings'
+              Resource: '*'
+        - PolicyName: InvokeFunctions
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+            -
+              Effect: Allow
+              Action:
+                - 'lambda:InvokeFunction'
+              Resource: '*'
+        - PolicyName: ComputeOptimizerReadLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+            -
+              Effect: Allow
+              Action:
+                - 'compute-optimizer:GetLambdaFunctionRecommendations'
+              Resource: '*'
+        - PolicyName: ServiceQuotas
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+            -
+              Effect: Allow
+              Action:
+                - 'servicequotas:ListServiceQuotas'
+                - 'servicequotas:GetServiceQuotas'
+              Resource: '*'
+        - PolicyName: SSMParam
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+            -
+              Effect: Allow
+              Action:
+                - 'ssm:PutParameter'
+                - 'ssm:GetParameter'
+              Resource: '*'
+
+#############################################################################################################################################
+
+Outputs:
+  S3Bucket:
+    Value: !Ref ReportBucket
+    Description: S3 bucket that contains output files from processing of the Operational Review Tool. Each execution of the tool stores information inside of a timestamped prefix.
+
+  StateMachineAllFunctions:
+    Value: !GetAtt MainStateMachineAll.Name
+    Description: Step Functions State Machine executing the processing of the review either on selected functions or on all functions in the region.
+    Condition: FunctionsNotSet
+
+  StateMachineSelectedFunctions:
+    Value: !GetAtt MainStateMachineSelected.Name
+    Description: Step Functions State Machine executing the processing of the review either on selected functions or on all functions in the region.
+    Condition: FunctionsSet
