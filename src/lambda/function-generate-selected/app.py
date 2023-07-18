@@ -7,7 +7,8 @@ from jinja2 import Template
 
 s3 = boto3.client('s3')
 ec2 = boto3.client('ec2')
-ssm = boto3.client('ssm')
+#ssm = boto3.client('ssm')
+supp = boto3.client('support')
 
 #env var load
 S3_BUCKET = os.environ['S3_BUCKET']
@@ -15,7 +16,7 @@ AWS_REGION = os.environ['REGION']
 AWS_ACCOUNT = os.environ['ACCOUNT']
 ACT_RUNTIMES = os.environ['ACT_RUNTIMES']
 STACK_NAME = os.environ['STACK_NAME']
-        
+TA_ENABLED = os.environ['TA_ENABLED']
 
 ###################################################################################################################################
 #multi-az evaluation code functionality
@@ -85,6 +86,61 @@ def check_deprecated_runtime(fns):
             fn['Message'] = 'Function runtime is one of latest'
     
     return run_check
+
+###################################################################################################################################
+
+###################################################################################################################################
+#TA - High Error Rates
+###################################################################################################################################
+def check_ta_high_errors():
+    ta_he = supp.describe_trusted_advisor_check_result(checkId='L4dfs2Q3C2')
+    ta_he_flagged = ta_he['result']['flaggedResources']
+    ta_he_flagged_list = []
+    ta_he_flagged_dict = dict
+    
+    #data cleanup
+    for f in ta_he_flagged:
+        if f['region'] == AWS_REGION:
+            ta_he_flagged_dict = {
+                'Status': f['metadata'][0],
+                'Region': f['metadata'][1],
+                'FunctionArn': f['metadata'][2],
+                'MaxDailyErrorRatePerc': f['metadata'][3],
+                'DateOfMaxErrorRate': f['metadata'][4],
+                'AverageDailyErrorRatePerc': f['metadata'][5]            
+            }
+            ta_he_flagged_list.append(ta_he_flagged_dict)
+            
+    return ta_he_flagged_list
+
+###################################################################################################################################
+
+###################################################################################################################################
+#TA - Excessive Timeouts
+###################################################################################################################################
+def check_ta_excessive_timeout():
+    ta_et = supp.describe_trusted_advisor_check_result(checkId='L4dfs2Q3C3')
+    ta_et_flagged = ta_et['result']['flaggedResources']
+    ta_et_flagged_list = []
+    ta_et_flagged_dict = dict
+    
+    #data cleanup
+    for f in ta_et_flagged:
+        if f['region'] == AWS_REGION:
+            ta_et_flagged_dict = {
+                'Status': f['metadata'][0],
+                'Region': f['metadata'][1],
+                'FunctionArn': f['metadata'][2],
+                'MaxDailyTimeoutRatePerc': f['metadata'][3],
+                'DateOfMaxTimeoutRate': f['metadata'][4],
+                'AverageDailyTimeoutRatePerc': f['metadata'][5],
+                'FunctionTimeoutSettings': f['metadata'][6]
+            }
+            ta_et_flagged_list.append(ta_et_flagged_dict)
+            
+    return ta_et_flagged_list
+
+
 
 ###################################################################################################################################
 
@@ -162,7 +218,18 @@ def handler(event, context):
         if run_warning['Message'] != 'Function runtime is one of latest':
             warnings_run.append(run_warning)
     
+    
+    #Trusted Advisor evaluations
+    
+    if TA_ENABLED == True:                
         
+        # Get HighErrorRate Check result
+        warnings_ta_high_errors = check_ta_high_errors()
+                
+        #Get ExcessiveTimeout Check result
+        warnings_ta_excessive_timeout = check_ta_excessive_timeout()
+        
+    
     #################################################################################           
     #functions configuration compilation:   
     #################################################################################
@@ -199,8 +266,11 @@ def handler(event, context):
     data['recfunctions'] = not_optimized_functions
     data['warnings_vpc'] = warnings_vpc
     data['warnings_runtime'] = warnings_run
+    data['ta_enabled'] = TA_ENABLED
+    if TA_ENABLED == True:
+        data['warnings_ta_high_errors'] = warnings_ta_high_errors
+        data['warnings_ta_excessive_timeout'] = warnings_ta_excessive_timeout
     data['recarch'] = old_arch_fns
-    #data['codesizeMessage'] = notification_codesize
     data['esms'] = filtered_esms
     data['reviewed_functions'] = functions
     
@@ -214,16 +284,20 @@ def handler(event, context):
     #upload the index.html file to S3
     status_code = 200
     response = ''
-    rerun = False
+    
         
     try:
         #upload the index.html file to S3
         s3.put_object(Body=index, Bucket=S3_BUCKET, Key=s3_prefix+'/index.html')
-        #s3 create signed url for the index.html file
-        response = s3.generate_presigned_url('get_object', Params={'Bucket': S3_BUCKET, 'Key': s3_prefix+'/index.html'}, ExpiresIn=3600) 
+        s3_url = s3_prefix+'/index.html' 
+                
+        status_code = 200
+        response = s3_url
+            
     except Exception as e:
         status_code = 500
         response = json.loads(e)
+    
     
     return {
         "statusCode": status_code,

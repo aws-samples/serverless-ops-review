@@ -1,4 +1,4 @@
-# Operational Review Tool (version: 1.0.0)
+# Operational Review Tool (version: 1.1.0)
 
 This tool has been created to help evaluate **AWS Serverless services** in bulk and to automatically generate a full review report which aims to assist in customer resource analysis.
 
@@ -8,6 +8,9 @@ This tool has been created to help evaluate **AWS Serverless services** in bulk 
   - Risk Warnings:
     - Multi-AZ warnings evaluate if a function is VPC enabled and if the linked subnets follow multi-AZ approach.
     - Runtime warnings evaluate if a function runtime is older then latest or two latest runtime versions (only Zip type supported)
+    - **AWS Trusted Advisor checks** (the following checks are included as part of the report if the AWS Account has [AWS Trusted Advisor](https://docs.aws.amazon.com/awssupport/latest/user/trusted-advisor.html)  enabled):
+      - Functions with high error rates
+      - Functions with excessive timeouts
   
   - Optimization Recommendations:
     - Provides optimization recommendations focused on function memory and benefits of optimizing (duration and cost).
@@ -36,8 +39,9 @@ This tool is using an event-driven approach to automatically trigger resource re
 - Execute `sam deploy --guided` command and pass the following parameters in the terminal:
 
   - Stack Name [sam-app]: ops-review
-  - AWS Region [region]: **select the region where your resources are located**
-  - Parameter Functions [All]: **hit RETURN/ENTER** to run a review of all functions in the region **OR** pass a **commadelimited list of function names you would like to review** (up to 40 supported)
+  - AWS Region [region]: **Select the region where your resources are located**.
+  - Parameter IsTrustedAdvisorEnabled [True]: If the target AWS Account has AWS Trusted Advisor **enabled**, set this parameter set to `true` for additional checks. In case the AWS Trusted Advisor is **not enabled** for the target AWS Account, please set this parameter to `false`.
+  - Parameter Functions [All]: Leave this parameter as defaul `All` to run a review of all functions in the region **OR** pass a **commadelimited list of function names you would like to review** (up to 40 supported).
   - The rest of the configuration can be left with defaults.
 
 - This process will trigger AWS CloudFormation stack deployment within your selected account. ONce the deployment is complete, the review and the report generation process will begin automatically so there is no need to trigger it.
@@ -46,7 +50,7 @@ This tool is using an event-driven approach to automatically trigger resource re
 
 - Open the [AWS Step Functions console](https://console.aws.amazon.com/states/home) and locate the deployed state machine - its name will be provided in the terminal outputs after SAM CLI completes deployment or it can be found within Outputs tab of the deployed CloudFormation stack in CloudFormation console.
 - Locate the latest execution withing the **Executions** section and click on it to open it.
-- Navigate to the list of events and locate the **last** execution event called **ExecutionSucceeded** (you may need to skip through pages of events). The body of this event will contain a list of S3 presigned URLs (valid for an hour), that can be used to access the generated reports.
+- Navigate to the list of events and locate the **last** execution event called **ExecutionSucceeded** (you may need to skip through pages of events or click on the last state before the end marker in the execution diagram). The body of this event will contain a list of S3 presigned URLs (valid for an hour), that can be used to access the generated reports.
 - Copy one presigned URL and paste it into a browser to download the report file.
 
 #### NOTE
@@ -79,12 +83,3 @@ This tool is using an event-driven approach to automatically trigger resource re
 
 - Remove all files from the deployed S3 bucket (name can be located in the CloudFormation stack Outputs)
 - Delete the deployed CloudFormation stack using `sam delete` command from terminal from the deployment folder or delete the CloudFormation stack from console.
-
-## Security
-
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
-
-## License
-
-This library is licensed under the MIT-0 License. See the LICENSE file.
-

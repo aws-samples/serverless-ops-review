@@ -5,7 +5,6 @@ import json, os, copy
 import boto3
 
 s3 = boto3.client('s3')
-ssm = boto3.client('ssm')
 
 #env var load
 S3_BUCKET = os.environ['S3_BUCKET']

@@ -1,8 +1,16 @@
-# Serverless Ops Review - Version: 1.0.0
+# Serverless Ops Review - Version: 1.1.0
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
 
 Transform: AWS::Serverless-2016-10-31
 
 Parameters:
+  IsTrustedAdvisorEnabled:
+    AllowedValues:
+      - true
+      - false
+    Type: String
+
   Functions:
     Type: CommaDelimitedList
     Default: All
@@ -66,6 +74,7 @@ Resources:
           ACCOUNT: !Ref AWS::AccountId
           ACT_RUNTIMES: !FindInMap [ ActRuntimes, AllRuntimes, Runtimes ]
           STACK_NAME: !Ref AWS::StackName
+          TA_ENABLED: !Ref IsTrustedAdvisorEnabled
       Policies:
         - Version: '2012-10-17' 
           Statement:
@@ -83,32 +92,11 @@ Resources:
                 - 'ssm:PutParameter'
                 - 'ssm:GetParameter'
               Resource: '*'
-
-  GeneratePresigns:
-    Condition: FunctionsNotSet
-    Type: AWS::Serverless::Function
-    Properties:
-      Architectures: 
-        - arm64
-      Handler: app.handler
-      Runtime: python3.10
-      CodeUri: src/lambda/function-gen-presign       
-      Environment:
-        Variables:
-          S3_BUCKET: !Ref ReportBucket
-      Policies:
-        - Version: '2012-10-17' 
-          Statement:
             - Effect: Allow
               Action:
-                - 's3:GetObject'
-                - 's3:PutObject'
-              Resource: !Sub ${ReportBucket.Arn}/*
-            - Effect: Allow
-              Action:
-                - 'ssm:PutParameter'
-                - 'ssm:GetParameter'
+                - 'support:DescribeTrustedAdvisorCheckResult'
               Resource: '*'
+
 
 #############################################################################################################################################
 
@@ -122,6 +110,7 @@ Resources:
       DefinitionSubstitutions:
         ReportBucketName: !Ref ReportBucket
         GenerateLambda: !GetAtt GenerateReportFunctionSelected.Arn
+        GenPresignLambda: !GetAtt GeneratePresigns.Arn
       Logging:
         Level: ALL
         IncludeExecutionData: true
@@ -183,6 +172,7 @@ Resources:
           ACCOUNT: !Ref AWS::AccountId
           ACT_RUNTIMES: !FindInMap [ ActRuntimes, AllRuntimes, Runtimes ]
           STACK_NAME: !Ref AWS::StackName
+          TA_ENABLED: !Ref IsTrustedAdvisorEnabled
       Policies:
         - Version: '2012-10-17' 
           Statement:
@@ -200,12 +190,41 @@ Resources:
                 - 'ssm:PutParameter'
                 - 'ssm:GetParameter'
               Resource: '*'
+            - Effect: Allow
+              Action:
+                - 'support:DescribeTrustedAdvisorCheckResult'
+              Resource: '*'
 
 #############################################################################################################################################
   
             
   
 ############################################### Shared Resources ###############################################       
+  
+  GeneratePresigns:
+    Type: AWS::Serverless::Function
+    Properties:
+      Architectures: 
+        - arm64
+      Handler: app.handler
+      Runtime: python3.10
+      CodeUri: src/lambda/function-gen-presign       
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref ReportBucket
+      Policies:
+        - Version: '2012-10-17' 
+          Statement:
+            - Effect: Allow
+              Action:
+                - 's3:GetObject'
+                - 's3:PutObject'
+              Resource: !Sub ${ReportBucket.Arn}/*
+            - Effect: Allow
+              Action:
+                - 'ssm:PutParameter'
+                - 'ssm:GetParameter'
+              Resource: '*'
 
   SfnLogGroup:
     Type: AWS::Logs::LogGroup
