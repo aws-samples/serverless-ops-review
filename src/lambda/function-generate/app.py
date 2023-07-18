@@ -99,18 +99,26 @@ def check_ta_high_errors(fns):
     ta_he_flagged_dict = dict
     checked_fns = fns
     
+    ### ADD cross check for functions
+    
     #data cleanup
     for f in ta_he_flagged:
-        if f['region'] == AWS_REGION:
-            ta_he_flagged_dict = {
-                'Status': f['metadata'][0],
-                'Region': f['metadata'][1],
-                'FunctionArn': f['metadata'][2],
-                'MaxDailyErrorRatePerc': f['metadata'][3],
-                'DateOfMaxErrorRate': f['metadata'][4],
-                'AverageDailyErrorRatePerc': f['metadata'][5]            
-            }
-            ta_he_flagged_list.append(ta_he_flagged_dict)
+        f_arn = f['metadata'][2].removesuffix(f['metadata'][2].split(':')[-1])
+        f_arn = f_arn.rstrip(f_arn[-1])
+        print(f_arn)
+        
+        for fn in checked_fns:
+            if f_arn == fn['FunctionArn']:
+                ta_he_flagged_dict = {
+                    'Status': f['metadata'][0],
+                    'Region': f['metadata'][1],
+                    'FunctionArn': f['metadata'][2],
+                    'MaxDailyErrorRatePerc': f['metadata'][3],
+                    'DateOfMaxErrorRate': f['metadata'][4],
+                    'AverageDailyErrorRatePerc': f['metadata'][5]            
+                }
+                ta_he_flagged_list.append(ta_he_flagged_dict)
+                break
             
     return ta_he_flagged_list
 
@@ -124,20 +132,28 @@ def check_ta_excessive_timeout(fns):
     ta_et_flagged = ta_et['result']['flaggedResources']
     ta_et_flagged_list = []
     ta_et_flagged_dict = dict
+    checked_fns = fns
+    
+    ### ADD cross check for functions
     
     #data cleanup
     for f in ta_et_flagged:
-        if f['region'] == AWS_REGION:
-            ta_et_flagged_dict = {
-                'Status': f['metadata'][0],
-                'Region': f['metadata'][1],
-                'FunctionArn': f['metadata'][2],
-                'MaxDailyTimeoutRatePerc': f['metadata'][3],
-                'DateOfMaxTimeoutRate': f['metadata'][4],
-                'AverageDailyTimeoutRatePerc': f['metadata'][5],
-                'FunctionTimeoutSettings': f['metadata'][6]
-            }
-            ta_et_flagged_list.append(ta_et_flagged_dict)
+        f_arn = f['metadata'][2].removesuffix(f['metadata'][2].split(':')[-1])
+        f_arn = f_arn.rstrip(f_arn[-1])
+        
+        for fn in checked_fns:
+            if f_arn == fn['FunctionArn']:
+                ta_et_flagged_dict = {
+                    'Status': f['metadata'][0],
+                    'Region': f['metadata'][1],
+                    'FunctionArn': f['metadata'][2],
+                    'MaxDailyTimeoutRatePerc': f['metadata'][3],
+                    'DateOfMaxTimeoutRate': f['metadata'][4],
+                    'AverageDailyTimeoutRatePerc': f['metadata'][5],
+                    'FunctionTimeoutSettings': f['metadata'][6]
+                }
+                ta_et_flagged_list.append(ta_et_flagged_dict)
+                break
             
     return ta_et_flagged_list
 
@@ -275,7 +291,6 @@ def handler(event, context):
     data['esms'] = filtered_esms
     data['reviewed_functions'] = functions
     
-    print(data['warnings_ta_high_errors'])
     
     #render the template
     with open('template.md', 'r') as file:
@@ -284,7 +299,7 @@ def handler(event, context):
     
     index = open("index.html").read().format(markdown_pointer=rendered_file)
     
-    #Get SSM Paramters
+    #Get SSM Parameters
     ops_index = ssm.get_parameter(Name='OpsReviewIndex')
     ops_index = int(ops_index['Parameter']['Value'])
     next_marker = ssm.get_parameter(Name='NextMarker')

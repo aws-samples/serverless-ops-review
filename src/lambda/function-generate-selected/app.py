@@ -92,24 +92,33 @@ def check_deprecated_runtime(fns):
 ###################################################################################################################################
 #TA - High Error Rates
 ###################################################################################################################################
-def check_ta_high_errors():
+def check_ta_high_errors(fns):
     ta_he = supp.describe_trusted_advisor_check_result(checkId='L4dfs2Q3C2')
     ta_he_flagged = ta_he['result']['flaggedResources']
     ta_he_flagged_list = []
     ta_he_flagged_dict = dict
+    checked_fns = fns
+    
+    ### ADD cross check for functions
     
     #data cleanup
     for f in ta_he_flagged:
-        if f['region'] == AWS_REGION:
-            ta_he_flagged_dict = {
-                'Status': f['metadata'][0],
-                'Region': f['metadata'][1],
-                'FunctionArn': f['metadata'][2],
-                'MaxDailyErrorRatePerc': f['metadata'][3],
-                'DateOfMaxErrorRate': f['metadata'][4],
-                'AverageDailyErrorRatePerc': f['metadata'][5]            
-            }
-            ta_he_flagged_list.append(ta_he_flagged_dict)
+        f_arn = f['metadata'][2].removesuffix(f['metadata'][2].split(':')[-1])
+        f_arn = f_arn.rstrip(f_arn[-1])
+        print(f_arn)
+        
+        for fn in checked_fns:
+            if f_arn == fn['FunctionArn']:
+                ta_he_flagged_dict = {
+                    'Status': f['metadata'][0],
+                    'Region': f['metadata'][1],
+                    'FunctionArn': f['metadata'][2],
+                    'MaxDailyErrorRatePerc': f['metadata'][3],
+                    'DateOfMaxErrorRate': f['metadata'][4],
+                    'AverageDailyErrorRatePerc': f['metadata'][5]            
+                }
+                ta_he_flagged_list.append(ta_he_flagged_dict)
+                break
             
     return ta_he_flagged_list
 
@@ -118,25 +127,33 @@ def check_ta_high_errors():
 ###################################################################################################################################
 #TA - Excessive Timeouts
 ###################################################################################################################################
-def check_ta_excessive_timeout():
+def check_ta_excessive_timeout(fns):
     ta_et = supp.describe_trusted_advisor_check_result(checkId='L4dfs2Q3C3')
     ta_et_flagged = ta_et['result']['flaggedResources']
     ta_et_flagged_list = []
     ta_et_flagged_dict = dict
+    checked_fns = fns
+    
+    ### ADD cross check for functions
     
     #data cleanup
     for f in ta_et_flagged:
-        if f['region'] == AWS_REGION:
-            ta_et_flagged_dict = {
-                'Status': f['metadata'][0],
-                'Region': f['metadata'][1],
-                'FunctionArn': f['metadata'][2],
-                'MaxDailyTimeoutRatePerc': f['metadata'][3],
-                'DateOfMaxTimeoutRate': f['metadata'][4],
-                'AverageDailyTimeoutRatePerc': f['metadata'][5],
-                'FunctionTimeoutSettings': f['metadata'][6]
-            }
-            ta_et_flagged_list.append(ta_et_flagged_dict)
+        f_arn = f['metadata'][2].removesuffix(f['metadata'][2].split(':')[-1])
+        f_arn = f_arn.rstrip(f_arn[-1])
+        
+        for fn in checked_fns:
+            if f_arn == fn['FunctionArn']:
+                ta_et_flagged_dict = {
+                    'Status': f['metadata'][0],
+                    'Region': f['metadata'][1],
+                    'FunctionArn': f['metadata'][2],
+                    'MaxDailyTimeoutRatePerc': f['metadata'][3],
+                    'DateOfMaxTimeoutRate': f['metadata'][4],
+                    'AverageDailyTimeoutRatePerc': f['metadata'][5],
+                    'FunctionTimeoutSettings': f['metadata'][6]
+                }
+                ta_et_flagged_list.append(ta_et_flagged_dict)
+                break
             
     return ta_et_flagged_list
 
@@ -221,13 +238,13 @@ def handler(event, context):
     
     #Trusted Advisor evaluations
     
-    if TA_ENABLED == True:                
-        
+    if TA_ENABLED == 'true':                
+        ta_fns = copy.deepcopy(functions)
         # Get HighErrorRate Check result
-        warnings_ta_high_errors = check_ta_high_errors()
+        warnings_ta_high_errors = check_ta_high_errors(ta_fns)
                 
         #Get ExcessiveTimeout Check result
-        warnings_ta_excessive_timeout = check_ta_excessive_timeout()
+        warnings_ta_excessive_timeout = check_ta_excessive_timeout(ta_fns)
         
     
     #################################################################################           
@@ -267,12 +284,13 @@ def handler(event, context):
     data['warnings_vpc'] = warnings_vpc
     data['warnings_runtime'] = warnings_run
     data['ta_enabled'] = TA_ENABLED
-    if TA_ENABLED == True:
+    if TA_ENABLED == 'true':
         data['warnings_ta_high_errors'] = warnings_ta_high_errors
         data['warnings_ta_excessive_timeout'] = warnings_ta_excessive_timeout
     data['recarch'] = old_arch_fns
     data['esms'] = filtered_esms
     data['reviewed_functions'] = functions
+    
     
     #render the template
     with open('template.md', 'r') as file:
@@ -284,16 +302,13 @@ def handler(event, context):
     #upload the index.html file to S3
     status_code = 200
     response = ''
-    
         
     try:
         #upload the index.html file to S3
         s3.put_object(Body=index, Bucket=S3_BUCKET, Key=s3_prefix+'/index.html')
-        s3_url = s3_prefix+'/index.html' 
-                
+        s3_url = s3_prefix+'/index.html'
         status_code = 200
-        response = s3_url
-            
+        response = s3_url            
     except Exception as e:
         status_code = 500
         response = json.loads(e)

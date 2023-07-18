@@ -1,4 +1,4 @@
-# Serverless Ops Review - Version: 1.1.0
+# Serverless Ops Review 
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 
@@ -65,6 +65,7 @@ Resources:
       Architectures: 
         - arm64
       Handler: app.handler
+      Timeout: 10
       Runtime: python3.10
       CodeUri: src/lambda/function-generate       
       Environment:
@@ -163,6 +164,7 @@ Resources:
       Architectures: 
         - arm64
       Handler: app.handler
+      Timeout: 10
       Runtime: python3.10
       CodeUri: src/lambda/function-generate-selected      
       Environment:

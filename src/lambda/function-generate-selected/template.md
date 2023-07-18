@@ -32,7 +32,7 @@
 
 {% else %}
 
-    - No isses reported for the reviewed function set.
+    - No issues reported for the reviewed function set.
 
 {% endif %}
 
@@ -55,7 +55,7 @@
 
 {% else %}
 
-    - No isses reported for the reviewed function set.
+    - No issues reported for the reviewed function set.
 
 {% endif %}
 
@@ -82,7 +82,7 @@
 
 {% else %}
 
-    - No isses reported for the reviewed function set.
+    - No issues reported for the reviewed function set.
 
 {% endif %}
 
@@ -108,7 +108,7 @@
 
 {% else %}
 
-    - No isses reported for the reviewed function set.
+    - No issues reported for the reviewed function set.
 
 {% endif %}
 
@@ -143,7 +143,9 @@
 
 {% else %}
 
-    - No recommendations reported for the reviewed function set.
+- No recommendations reported for the reviewed function set.
+
+---
 
 {% endif %}
 
