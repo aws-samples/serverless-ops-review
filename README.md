@@ -85,6 +85,7 @@ This tool is using an event-driven approach to automatically trigger resource re
 - Delete the deployed CloudFormation stack using `sam delete` command from terminal from the deployment folder or delete the CloudFormation stack from console.
 
 
+## Versions
 
 - version 1.1.1 updates:
   - Python 3.9 removed from latest runtimes
