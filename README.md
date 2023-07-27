@@ -1,4 +1,4 @@
-# Operational Review Tool (version: 1.1.0)
+# Operational Review Tool (version: 1.1.1)
 
 This tool has been created to help evaluate **AWS Serverless services** in bulk and to automatically generate a full review report which aims to assist in customer resource analysis.
 
@@ -83,3 +83,9 @@ This tool is using an event-driven approach to automatically trigger resource re
 
 - Remove all files from the deployed S3 bucket (name can be located in the CloudFormation stack Outputs)
 - Delete the deployed CloudFormation stack using `sam delete` command from terminal from the deployment folder or delete the CloudFormation stack from console.
+
+
+
+- version 1.1.1 updates:
+  - Python 3.9 removed from latest runtimes
+  - Python 3.11 added to latest runtimes
