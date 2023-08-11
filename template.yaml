@@ -1,4 +1,4 @@
-# Serverless Ops Review 
+# Serverless Ops Review
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
 
@@ -98,6 +98,12 @@ Resources:
                 - 'support:DescribeTrustedAdvisorCheckResult'
               Resource: '*'
 
+  GenerateReportFunctionAllLogGroup:
+    Condition: FunctionsNotSet
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${GenerateReportFunctionAll}
+      RetentionInDays: 14 
 
 #############################################################################################################################################
 
@@ -157,6 +163,13 @@ Resources:
                 status-details: 
                   status: [CREATE_COMPLETE, UPDATE_COMPLETE]
 
+  FunctionSelectedLogGroup:
+    Condition: FunctionsSet
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${FunctionSelected}
+      RetentionInDays: 14
+
   GenerateReportFunctionSelected:
     Condition: FunctionsSet
     Type: AWS::Serverless::Function
@@ -197,6 +210,12 @@ Resources:
                 - 'support:DescribeTrustedAdvisorCheckResult'
               Resource: '*'
 
+  GenerateReportFunctionSelectedLogGroup:
+    Condition: FunctionsSet
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${GenerateReportFunctionSelected}
+      RetentionInDays: 14
 #############################################################################################################################################
   
             
@@ -227,6 +246,12 @@ Resources:
                 - 'ssm:PutParameter'
                 - 'ssm:GetParameter'
               Resource: '*'
+
+  GeneratePresignsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${GeneratePresigns}
+      RetentionInDays: 14
 
   SfnLogGroup:
     Type: AWS::Logs::LogGroup
