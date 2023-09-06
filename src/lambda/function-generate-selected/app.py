@@ -7,6 +7,7 @@ from jinja2 import Template
 
 s3 = boto3.client('s3')
 ec2 = boto3.client('ec2')
+#ssm = boto3.client('ssm')
 supp = boto3.client('support')
 
 #env var load
@@ -98,6 +99,8 @@ def check_ta_high_errors(fns):
     ta_he_flagged_dict = dict
     checked_fns = fns
     
+    ### ADD cross check for functions
+    
     #data cleanup
     for f in ta_he_flagged:
         f_arn = f['metadata'][2].removesuffix(f['metadata'][2].split(':')[-1])
@@ -130,6 +133,8 @@ def check_ta_excessive_timeout(fns):
     ta_et_flagged_list = []
     ta_et_flagged_dict = dict
     checked_fns = fns
+    
+    ### ADD cross check for functions
     
     #data cleanup
     for f in ta_et_flagged:
@@ -271,7 +276,7 @@ def handler(event, context):
     
     #################################################################################
     
-    #create a dict with all data that will populate the template
+    #create a dict wilh all data that will populate the template
     data = {}
     data['account'] = AWS_ACCOUNT
     data['region'] = AWS_REGION
