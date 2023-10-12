@@ -1,6 +1,8 @@
-# Serverless Operational Review Tool (version: 1.1.1)
+# Serverless Operational Review Tool
 
 This tool has been created to help evaluate **AWS Serverless services** in bulk and to automatically generate a full review report which aims to assist in customer resource analysis.
+
+**Tool versions with changelog are present [here](VERSIONS.md).**
 
 ## Currently supported features
 

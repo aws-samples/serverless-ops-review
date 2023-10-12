@@ -1,0 +1,769 @@
+
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+        <title>Serverless Operational Review</title>
+    </head>
+    <style>
+        .tab {
+          margin: 25px;
+        }
+
+        .tab-top{
+            margin-top: 30px;
+            margin: 25px;
+        }
+
+        .warn-hr{
+            height: 10px;
+            background: red;
+            margin: 25px
+        }
+
+        .rec-hr{
+            height: 10px;
+            background: navy;
+            margin: 25px
+        }
+
+        .func-hr{
+            height: 10px;
+            background: grey;
+            margin: 25px
+        }
+    </style>
+    <body>
+        <div class="jumbotron text-left">
+            <div class="tab">
+                <h2>Serverless Operational Review</h2>                
+                <table>
+                    <tr>
+                        <td><h5>AWS Account:</h5></td>
+                        <td><h5><b>{{data.account}}</b></h5></td>
+                    </tr>
+                    <tr>
+                        <td><h5>Region:</h5></td>
+                        <td><h5><b>{{data.region}}</b></h5></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab">
+            <h3>AWS Lambda Review</h3>
+        </div>
+        <hr>
+
+        <hr class="warn-hr">
+        <div class="tab">
+            <h4 style="background-color: white; color: red;"><b>Danger Zone - Risks and Warnings</b></h4>
+            <ul>
+                <li>This section outlines areas that have a high risk of impacting existing workloads!</li>
+                <li>Details about specific Lambda functions can be found in <b>Reviewed Functions - Configurations</b> section of this report.</li>
+            </ul>
+        </div>
+        <hr class="warn-hr">
+
+        <div class="tab-top">
+            <h4><b>Function Runtime Versions - Warnings</b></h4>
+            <ul>
+                <li>Review the <a href="https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html"><b>Lambda runtime documentation</b></a> for currently supported as well as soon to be deprecated runtimes.</li>
+                <li>Functions with runtimes that are not latest or one out of two latest will be marked for update recommandation.</li>
+            </ul>
+        </div><hr>
+        <div class="col-xs">
+            <h5 class="sub-header tab"><b>Python functions</b></h5>
+            {% if data.dep_python_functions != [] %}
+            <div class="table-responsive tab">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="col-md-1">Function Name</th>
+                            <th class="col-md-2">Runtime Version</th>
+                            <th class="col-md-3">Function Version</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fn in data.dep_python_functions %}
+                        <tr>                      
+                            <td class="col-md-1">{{fn['FunctionName']}}</td>
+                            <td class="col-md-1">{{fn['Runtime']}}</td>
+                            <td class="col-md-1">{{fn['Version']}}</td>  
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="col-xs">
+                <p class="sub-header tab">No functions with this runtime to update.</p>
+            </div>
+            {% endif %}
+        </div>
+        <hr>
+        <div class="col-xs">
+            <h5 class="sub-header tab"><b>Node.js functions</b></h5>
+            {% if data.dep_nodejs_functions != [] %}
+            <div class="table-responsive tab">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="col-md-1">Function Name</th>
+                            <th class="col-md-2">Runtime Version</th>
+                            <th class="col-md-3">Function Version</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fn in data.dep_nodejs_functions %}
+                        <tr>                      
+                            <td class="col-md-1">{{fn['FunctionName']}}</td>
+                            <td class="col-md-1">{{fn['Runtime']}}</td>
+                            <td class="col-md-1">{{fn['Version']}}</td>  
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="col-xs">
+                <p class="sub-header tab">No functions with this runtime to update.</p>
+            </div>
+            {% endif %}
+        </div>
+        <hr>
+        <div class="col-xs">
+            <h5 class="sub-header tab"><b>Java functions</b></h5>
+            {% if data.dep_java_functions != [] %}
+            <div class="table-responsive tab">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="col-md-1">Function Name</th>
+                            <th class="col-md-2">Runtime Version</th>
+                            <th class="col-md-3">Function Version</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fn in data.dep_java_functions %}
+                        <tr>                      
+                            <td class="col-md-1">{{fn['FunctionName']}}</td>
+                            <td class="col-md-1">{{fn['Runtime']}}</td>
+                            <td class="col-md-1">{{fn['Version']}}</td>  
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="col-xs">
+                <p class="sub-header tab">No functions with this runtime to update.</p>
+            </div>
+            {% endif %}
+        </div>
+        <hr>
+        <div class="col-xs">
+            <h5 class="sub-header tab"><b>.Net functions</b></h5>
+            {% if data.dep_dotnet_functions != [] %}
+            <div class="table-responsive tab">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="col-md-1">Function Name</th>
+                            <th class="col-md-2">Runtime Version</th>
+                            <th class="col-md-3">Function Version</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fn in data.dep_dotnet_functions %}
+                        <tr>                      
+                            <td class="col-md-1">{{fn['FunctionName']}}</td>
+                            <td class="col-md-1">{{fn['Runtime']}}</td>
+                            <td class="col-md-1">{{fn['Version']}}</td>  
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="col-xs">
+                <p class="sub-header tab">No functions with this runtime to update.</p>
+            </div>
+            {% endif %}
+        </div>
+        <hr>
+        <div class="col-xs">
+            <h5 class="sub-header tab"><b>Ruby functions</b></h5>
+            {% if data.dep_ruby_functions != [] %}
+            <div class="table-responsive tab">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="col-md-1">Function Name</th>
+                            <th class="col-md-2">Runtime Version</th>
+                            <th class="col-md-3">Function Version</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fn in data.dep_ruby_functions %}
+                        <tr>                      
+                            <td class="col-md-1">{{fn['FunctionName']}}</td>
+                            <td class="col-md-1">{{fn['Runtime']}}</td>
+                            <td class="col-md-1">{{fn['Version']}}</td>  
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="col-xs">
+                <p class="sub-header tab">No functions with this runtime to update.</p>
+            </div>
+            {% endif %}
+        </div>
+        <hr>
+        <div class="col-xs">
+            <h5 class="sub-header tab"><b>Golang functions</b></h5>
+            {% if data.dep_golang_functions != [] %}
+            <div class="table-responsive tab">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="col-md-1">Function Name</th>
+                            <th class="col-md-2">Runtime Version</th>
+                            <th class="col-md-3">Function Version</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fn in data.dep_golang_functions %}
+                        <tr>                      
+                            <td class="col-md-1">{{fn['FunctionName']}}</td>
+                            <td class="col-md-1">{{fn['Runtime']}}</td>
+                            <td class="col-md-1">{{fn['Version']}}</td>  
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="col-xs">
+                <p class="sub-header tab">No functions with this runtime to update.</p>
+            </div>
+            {% endif %}
+        </div>
+        <hr>
+        <div class="col-xs">
+            <h5 class="sub-header tab"><b>Custom runtime functions</b></h5>
+            {% if data.dep_custom_functions != [] %}
+            <div class="table-responsive tab">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="col-md-1">Function Name</th>
+                            <th class="col-md-2">Runtime Version</th>
+                            <th class="col-md-3">Function Version</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fn in data.dep_custom_functions %}
+                        <tr>                      
+                            <td class="col-md-1">{{fn['FunctionName']}}</td>
+                            <td class="col-md-1">{{fn['Runtime']}}</td>
+                            <td class="col-md-1">{{fn['Version']}}</td>  
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="col-xs">
+                <p class="sub-header tab">No functions with this runtime to update.</p>
+            </div>
+            {% endif %}
+        </div>
+        <hr><hr>
+
+        {% if data.warnings_ta_high_errors != [] %}
+        <div class="tab-top">
+            <h4><b>Functions with High Error Rates</b></h4>
+        </div>
+        
+        <div class="col-xs">
+            <div class="table-responsive tab">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="col-md-1">Function ARN</th>
+                            <th class="col-md-2">Status</th>
+                            <th class="col-md-3">Average Daily Errors %</th>
+                            <th class="col-md-4">Maximum Daily Errors %</th>
+                            <th class="col-md-5">Date of Max Error Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for warnings_ta_high_errors in data.warnings_ta_high_errors %}
+                        <tr>                      
+                            <td class="col-md-1">{{warnings_ta_high_errors['FunctionArn']}}</td>
+                            <td class="col-md-1">{{warnings_ta_high_errors['Status']}}</td>
+                            <td class="col-md-1">{{warnings_ta_high_errors['AverageDailyErrorRatePerc']}}</td>  
+                            <td class="col-md-1">{{warnings_ta_high_errors['MaxDailyErrorRatePerc']}}</td>
+                            <td class="col-md-1">{{warnings_ta_high_errors['DateOfMaxErrorRate']}}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+        
+        <hr><hr>
+
+        {% if data.warnings_ta_excessive_timeouts != [] %}
+        <div class="tab-top">
+            <h4><b>Functions with Excessive Timeouts</b></h4>
+        </div>
+        
+        <div class="col-xs">
+            <div class="table-responsive tab">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="col-md-1">Function ARN</th>
+                            <th class="col-md-2">Status</th>
+                            <th class="col-md-3">Average Daily Timeouts %</th>
+                            <th class="col-md-4">Maximum Daily Timeouts %</th>
+                            <th class="col-md-5">Date of Max Timeouts</th>
+                            <th class="col-md-6">Function Timeout Config</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for warnings_ta_excessive_timeout in data.warnings_ta_excessive_timeouts %}
+                        <tr>                      
+                            <td class="col-md-1">{{warnings_ta_excessive_timeout['FunctionArn']}}</td>
+                            <td class="col-md-1">{{warnings_ta_excessive_timeout['Status']}}</td>
+                            <td class="col-md-1">{{warnings_ta_excessive_timeout['AverageDailyTimeoutRatePerc']}}</td>  
+                            <td class="col-md-1">{{warnings_ta_excessive_timeout['MaxDailyTimeoutRatePerc']}}</td>
+                            <td class="col-md-1">{{warnings_ta_excessive_timeout['DateOfMaxTimeoutRate']}}</td>
+                            <td class="col-md-1">{{warnings_ta_excessive_timeout['FunctionTimeoutSettings']}}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+        
+        <hr><hr>
+
+        {% if data.warnings_vpc != [] %}
+        <div class="tab-top">
+            <h4><b>VPC-enabled Functions - Incorrect multi-AZ configuration</b></h4>
+        </div>
+        
+        <div class="col-xs">
+            <div class="table-responsive tab">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="col-md-1">Function ARN</th>
+                            <th class="col-md-2">SubnetID</th>
+                            <th class="col-md-2">Avalabitlity Zone</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for warnings_vpc in data.warnings_vpc %}
+                        <tr>                      
+                            <td class="col-md-1">{{warnings_vpc['FunctionArn']}}</td>
+                            {% for subaz in warnings_vpc['Subnets'] %}
+                            <tr>
+                                <td></td>
+                                <td class="col-md-1">{{subaz['SubnetId']}}</td>
+                                <td class="col-md-1">{{subaz['AZ']}}</td>
+                            </tr>    
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+        <hr><hr>
+
+       
+        <hr class="warn-hr">
+        <hr class="rec-hr">
+
+        <div class="tab">
+            <h4 style="background-color: white; color: navy;"><b>Optimization Zone - Recommendations</b></h4>
+            <ul>
+                <li>To balance memory and CPU of your Lambda functions, we recommend using <a href="https://docs.aws.amazon.com/lambda/latest/operatorguide/profile-functions.html"><b>Lambda Power Tuning</b></a>.</li>
+            </ul>
+        </div>
+        <hr class="rec-hr">
+
+
+        {% if data.recfunctions != [] %}
+        <div class="tab-top">
+            <h4><b>Memory Optimization Recommendations</b></h4>
+            <ul>
+                <li>The recommendations below are sourced from <a href="https://console.aws.amazon.com/compute-optimizer/"><b>AWS Compute Optimizer</b></a>.</li>
+                <li><b>The loopback period is 14 days.</b></li>
+            </ul>
+        </div>
+        <hr>
+        
+        <div class="col-xs">
+            <div class="table-responsive tab">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="col-md-1">Function ARN</th>
+                            <th class="col-md-2">Finding</th>
+                            <th class="col-md-3">Number of Invocations</th>
+                            <th class="col-md-4">Current Memory Size</th>
+                            <th class="col-md-5">Recommended Memory Size</th>
+                            <th class="col-md-6">Est. Montly Saving (USD)</th>
+                            <th class="col-md-7">Est. Montly Saving %</th>
+                            <th class="col-md-8">Duration Current - Projected (ms)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rec in data.recfunctions %}
+                        <tr>                      
+                            <td class="col-md-1">{{rec['FunctionArn']}}</td>
+                            <td class="col-md-1">{{rec['FindingReasonCodes'][0]}}</td>
+                            <td class="col-md-1">{{rec['NumberOfInvocations']}}</td>
+                            <td class="col-md-1">{{rec['CurrentMemorySize']}}</td>
+                            <td class="col-md-1">{{rec['MemorySizeRecommendationOptions'][0]['MemorySize']}}</td>
+                            <td class="col-md-1">{{rec['MemorySizeRecommendationOptions'][0]['SavingsOpportunity']['EstimatedMonthlySavings']['Value']}}</td>
+                            <td class="col-md-1">{{rec['MemorySizeRecommendationOptions'][0]['SavingsOpportunity']['SavingsOpportunityPercentage']}}</td>
+                            <td class="col-md-1">{{rec['UtilizationMetrics'][0]['Value']}} - {{rec['MemorySizeRecommendationOptions'][0]['ProjectedUtilizationMetrics'][1]['Value']}}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+        <hr><hr>
+
+
+        {% if data.recarch != [] %}
+        <div class="tab-top">
+            <h4><b>Functions running on x86 Architecture Type</b></h4>
+            <ul><li>We recommend upgrading these functions to use <a href="https://docs.aws.amazon.com/lambda/latest/dg/foundation-arch.html"><b>arm64</b> architecture type (<b>Graviton 2</b>)</a>.</li></ul>
+        </div>
+        
+        <div class="col-xs">
+            <div class="table-responsive tab">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="col-md-1">Functions running x86 architecture, consider upgrade to arm64</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in data.recarch %}
+                        <tr>                      
+                            <td class="col-md-1">{{f}}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+        <hr><hr>
+        <hr class="rec-hr">
+
+        <hr class="func-hr">
+        <div class="tab">
+            <h4 style="background-color: white; color: grey;"><b>Reviewed Functions - Configurations</b></h4>
+            <ul><li>The below information contains all reviewed Lambda functions, function versions and their configurations including event source mappings configurations.</li></ul>
+        </div>
+        <hr class="func-hr">
+
+        {% if data.reviewed_functions != [] %}
+        <div class="col-xs">
+            <div class="table-responsive tab">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="col-md-1">Reviewed functions configurations</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in data.reviewed_functions %}
+                        <tr>                      
+                            <td class="col-md-1"><b>Function ARN:</b></td>
+                            <td class="col-md-2"><b>{{f['FunctionArn']}}</b></td>
+                        </tr>
+                        <tr>                      
+                            <td class="col-md-1">Memory (MB):</td>
+                            <td class="col-md-2"><{{f['MemorySize']}}</td>
+                        </tr>
+                        <tr>                      
+                            <td class="col-md-1">Timeout (S):</td>
+                            <td class="col-md-2">{{f['Timeout']}}</td>
+                        </tr>
+                        <tr>                      
+                            <td class="col-md-1">Runtime:</td>
+                            <td class="col-md-2">{{f['Runtime']}}</td>
+                        </tr>
+                        <tr>                      
+                            <td class="col-md-1">Architecture:</td>
+                            <td class="col-md-2">{{f['Architectures']}}</td>
+                        </tr>
+                        <tr>                      
+                            <td class="col-md-1">Package Type:</td>
+                            <td class="col-md-2">{{f['PackageType']}}</td>
+                        </tr>
+                        <tr>                      
+                            <td class="col-md-1">Reserved Concurrency:</td>
+                            {% if f.ReservedConcurrency != {} %}
+                            <td class="col-md-2">{{f.ReservedConcurrency.ReservedConcurrentExecutions}}</td>
+                            {% else %}
+                            <td class="col-md-2">0</td>
+                            {% endif %}
+                        </tr>
+                        <tr>                      
+                            <td class="col-md-1">Provisioned Concurrency Config:</td>
+                            {% if f.ProvisionedConcurrencyConfigs != [] %}
+                                {% for c in f.ProvisionedConcurrencyConfigs %}
+                                    <tr>
+                                        <td></td>
+                                        <td class="col-md-1"><b>ARN: {{c.FunctionArn}}</b></td>
+                                    </tr>
+                                    <tr>
+                                        <td></td>
+                                        <td class="col-md-1">Status: {{c.Status}}</td>
+                                    </tr>
+                                    <tr>
+                                        <td></td>
+                                        <td class="col-md-1">Requested PC Executions: {{c.RequestedProvisionedConcurrentExecutions}}</td>
+                                    </tr>
+                                    <tr>
+                                        <td></td>
+                                        <td class="col-md-1">Allocated PC Executions: {{c.AllocatedProvisionedConcurrentExecutions}}</td>
+                                    </tr>
+                                    <tr>
+                                        <td></td>
+                                        <td class="col-md-1">Available PC Executions: {{c.AvailableProvisionedConcurrentExecutions}}</td>
+                                    </tr>
+                                    <tr>
+                                        <td></td>
+                                        <td class="col-md-1">Last Modified: {{c.LastModified}}</td>
+                                    <hr>  
+                                {% endfor %}
+                            {% else %}
+                            <td class="col-md-2"> Not Set</td>
+                            {% endif %}
+                        </tr>
+                        <tr>                      
+                            <td class="col-md-1">Execution Role:</td>
+                            <td class="col-md-2">{{f['Role']}}</td>
+                        </tr>
+                        <tr>                      
+                            <td class="col-md-1">Code Size (B):</td>
+                            <td class="col-md-2">{{f['CodeSize']}}</td>
+                        </tr>
+                        <tr>                      
+                            <td class="col-md-1">Ephemeral Storage Size (MB):</td>
+                            <td class="col-md-2">{{f['EphemeralStorage']}}</td>
+                        </tr>
+                        <tr>                      
+                            <td class="col-md-1">X-Ray tracing:</td>
+                            <td class="col-md-2">{{f['TracingConfig']}}</td>
+                        </tr>
+                        <tr>                      
+                            <td class="col-md-1">SnapStart Status (only Java):</td>
+                            <td class="col-md-2">{{f['SnapStartOptimizationStatus']}}</td>
+                        </tr>
+                        <tr>                      
+                            <td><hr class="func-hr"></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+        <hr><hr>
+
+        {% if data.esms != [] %}
+        
+        <div class="col-xs">
+            <div class="table-responsive tab">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th class="col-md-1">Event Source Mapping Configuration Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in data.esms %}
+                            <tr>                      
+                                <td class="col-md-1"><b>Event Source ARN</b>:</td>
+                                <td class="col-md-1">{{e.EventSourceArn}}</td>
+                            </tr>
+                            <tr>                      
+                                <td class="col-md-1"><b>Linked Function ARN</b>:</td>
+                                <td class="col-md-1">{{e.FunctionArn}}</td>
+                            </tr>
+                            <tr>                      
+                                <td class="col-md-1">State of Event Source Mapping:</td>
+                                <td class="col-md-1"><b>{{e.State}}</b></td>
+                            </tr>
+                            <tr>                      
+                                <td class="col-md-1">Batch Size:</td>
+                                <td class="col-md-1">{{e.BatchSize}}</td>
+                            </tr>
+                            <tr>                      
+                                <td class="col-md-1">Last Modified:</td>
+                                <td class="col-md-1">{{e.LastModified}}</td>
+                            </tr>
+                            <tr>                      
+                                <td class="col-md-1">Last Processing Result:</td>
+                                <td class="col-md-1">{{e.LastProcessingResult}}</td>
+                            </tr>
+                            {% if e.StartingPosition is defined %}
+                                <tr>                      
+                                    <td class="col-md-1">Starting Position:</td>
+                                    <td class="col-md-1">{{e.StartingPosition}}</td>
+                                </tr>
+                            {% endif %}
+                            {% if e.StartingPositionTimestamp is defined %}
+                                <tr>                      
+                                    <td class="col-md-1">Starting Position Timestamp:</td>
+                                    <td class="col-md-1">{{e.StartingPositionTimestamp}}</td>
+                                </tr>
+                            {% endif %}
+                            {% if e.StateTransitionReason is defined %}
+                                <tr>                      
+                                    <td class="col-md-1">State Transition Reason:</td>
+                                    <td class="col-md-1">{{e.StateTransitionReason}}</td>
+                                </tr>
+                            {% endif %}
+                            {% if e.AmazonManagedKafkaEventSourceConfig is defined %}
+                                <tr>                      
+                                    <td class="col-md-1">Kafka Consumer Group Id:</td>
+                                    <td class="col-md-1">{{e.AmazonManagedKafkaEventSourceConfig.ConsumerGroupId}}</td>
+                                </tr>
+                            {% endif %}
+                            {% if e.BisectBatchOnFunctionError is defined %}
+                                <tr>                      
+                                    <td class="col-md-1">Bisect Batch on Function Error Config:</td>
+                                    <td class="col-md-1">{{e.BisectBatchOnFunctionError}}</td>
+                                </tr>
+                            {% endif %}
+                            {% if e.TumblingWindowInSeconds is defined %}
+                            <tr>                      
+                                <td class="col-md-1">Tumbling Window (s):</td>
+                                <td class="col-md-1">{{e.TumblingWindowInSeconds}}</td>
+                            </tr>
+                            {% endif %}
+                            {% if e.DestinationConfig is defined %}
+                            {% if e.DestinationConfig.OnFailure is defined %}
+                                <tr>                      
+                                    <td class="col-md-1">Destination On Failure:</td>
+                                    <td class="col-md-1">{{e.DestinationConfig.OnFailure.Destination}}</td>
+                                </tr>
+                            {% endif %}
+                            {% if e.DestinationConfig.OnSuccess is defined %}
+                                <tr>                      
+                                    <td class="col-md-1">Destination On Success:</td>
+                                    <td class="col-md-1">{{e.DestinationConfig.OnSuccess.Destination}}</td>
+                                </tr>
+                            {% endif %}
+                            {% endif %}
+                            {% if e.FunctionResponseTypes is defined %}
+                                <tr>                      
+                                    <td class="col-md-1">Function Response Types:</td>
+                                    <td class="col-md-1">{{e.FunctionResponseTypes}}</td>
+                                </tr>
+                            {% endif %}
+                            {% if e.DocumentDBEventSourceConfig is defined %}
+                                <tr>                      
+                                    <td class="col-md-1">Collection Name:</td>
+                                    <td class="col-md-1">{{e.DocumentDBEventSourceConfig.CollectionName}}</td>
+                                </tr>
+                                <tr>                      
+                                    <td class="col-md-1">Database Name:</td>
+                                    <td class="col-md-1">{{e.DocumentDBEventSourceConfig.DatabaseName}}</td>
+                                </tr>
+                                <tr>                      
+                                    <td class="col-md-1">Full Document:</td>
+                                    <td class="col-md-1">{{e.DocumentDBEventSourceConfig.FullDocument}}</td>
+                                </tr>
+                            {% endif %}
+                            {% if e.FilterCriteria is defined %}
+                                <tr>                      
+                                    <td class="col-md-1">Filter Configurations:</td>
+                                </tr>
+                                {% for f in e.FilterCriteria.Filters %}
+                                <tr>
+                                    <td></td>
+                                    <td class="col-md-1">{{f.Pattern}}</td>
+                                </tr>
+                                {% endfor %}
+                            {% endif %}
+                            <tr>                      
+                                <td class="col-md-1">Max Batching Window (s):</td>
+                                <td class="col-md-1">{{e.MaximumBatchingWindowInSeconds}}</td>
+                            </tr>
+                            {% if e.MaximumRecordAgeInSeconds is defined %}
+                                <tr>                      
+                                    <td class="col-md-1">Max Record Age (s):</td>
+                                    <td class="col-md-1">{{e.MaximumRecordAgeInSeconds}}</td>
+                                </tr>
+                            {% endif %}
+                            {% if e.MaximumRetryAttempts is defined %}
+                                <tr>                      
+                                    <td class="col-md-1">Max Retry Attempts:</td>
+                                    <td class="col-md-1">{{e.MaximumRetryAttempts}}</td>
+                                </tr>
+                            {% endif %}
+                            {% if e.ParallelizationFactor is defined %}
+                                <tr>                      
+                                    <td class="col-md-1">Parallelization Factor:</td>
+                                    <td class="col-md-1">{{e.ParallelizationFactor}}</td>
+                                </tr>
+                            {% endif %}
+                            {% if e.ScalingConfig is defined %}
+                                <tr>                      
+                                    <td class="col-md-1">Scaling Configuration (Concurrency):</td>
+                                    <td class="col-md-1">{{e.ScalingConfig.MaximumConcurrency}}</td>
+                                </tr>
+                            {% endif %}
+                            {% if e.SelfManagedEventSource is defined %}
+                                <tr>                      
+                                    <td class="col-md-1">Self Managed Event Source Endpoints:</td>
+                                    <td class="col-md-1">{{e.SelfManagedEventSource.Endpoints}}</td>
+                                </tr>
+                            {% endif %}
+                            {% if e.SelfManagedKafkaEventSourceConfig is defined %}
+                                <tr>                      
+                                    <td class="col-md-1">Self Managed Kafka Event Source Config:</td>
+                                    <td class="col-md-1">Consumer Group ID: {{e.SelfManagedKafkaEventSourceConfig.ConsumerGroupId}}</td>
+                                </tr>
+                            {% endif %}
+                            <tr>                      
+                                <td><hr class="func-hr"></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+        </div>
+        <hr class="func-hr">
+        <div class="tab">
+            <h2>END OF REPORT</h2>
+        </div>   
+    </body>
+</html>
+
+
+

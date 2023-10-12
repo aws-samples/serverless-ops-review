@@ -4,12 +4,17 @@
 
 Transform: AWS::Serverless-2016-10-31
 
+Globals:
+  Function:
+    Runtime: python3.11
+
 Parameters:
   IsTrustedAdvisorEnabled:
     AllowedValues:
       - true
       - false
     Type: String
+    Default: true
 
   Functions:
     Type: CommaDelimitedList
@@ -37,7 +42,7 @@ Resources:
       DefinitionSubstitutions:
         ReportBucketName: !Ref ReportBucket
         GenerateLambda: !GetAtt GenerateReportFunctionAll.Arn
-        GenPresignLambda: !GetAtt GeneratePresigns.Arn
+        EsmLambda: !GetAtt FetchESMsFunctionAll.Arn
       Logging:
         Level: ALL
         IncludeExecutionData: true
@@ -66,7 +71,6 @@ Resources:
         - arm64
       Handler: app.handler
       Timeout: 10
-      Runtime: python3.10
       CodeUri: src/lambda/function-generate       
       Environment:
         Variables:
@@ -86,17 +90,42 @@ Resources:
               Resource: !Sub ${ReportBucket.Arn}/*
             - Effect: Allow
               Action:
-                - 'ec2:DescribeSubnets'
-              Resource: '*'
+                - 's3:ListBucket'
+              Resource: !Sub ${ReportBucket.Arn}
             - Effect: Allow
               Action:
-                - 'ssm:PutParameter'
-                - 'ssm:GetParameter'
+                - 'ec2:DescribeSubnets'
               Resource: '*'
             - Effect: Allow
               Action:
                 - 'support:DescribeTrustedAdvisorCheckResult'
               Resource: '*'
+  FetchESMsFunctionAll:
+    Condition: FunctionsNotSet
+    Type: AWS::Serverless::Function
+    Properties:
+      MemorySize: 256
+      Architectures: 
+        - arm64
+      Handler: app.handler
+      Timeout: 10
+      CodeUri: src/lambda/function-fetch-esms      
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref ReportBucket
+      Policies:
+        - Version: '2012-10-17' 
+          Statement:
+            - Effect: Allow
+              Action:
+                - 's3:GetObject'
+                - 's3:PutObject'
+              Resource: !Sub ${ReportBucket.Arn}/*
+            - Effect: Allow
+              Action:
+                - 'lambda:ListEventSourceMappings'
+              Resource: '*'
+            
 
   GenerateReportFunctionAllLogGroup:
     Condition: FunctionsNotSet
@@ -104,6 +133,17 @@ Resources:
     Properties:
       LogGroupName: !Sub /aws/lambda/${GenerateReportFunctionAll}
       RetentionInDays: 14 
+  
+  FetchESMsFunctionAllLogGroup:
+    Condition: FunctionsNotSet
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${FetchESMsFunctionAll}
+      RetentionInDays: 14 
+
+
+
+  
 
 #############################################################################################################################################
 
@@ -117,7 +157,6 @@ Resources:
       DefinitionSubstitutions:
         ReportBucketName: !Ref ReportBucket
         GenerateLambda: !GetAtt GenerateReportFunctionSelected.Arn
-        GenPresignLambda: !GetAtt GeneratePresigns.Arn
       Logging:
         Level: ALL
         IncludeExecutionData: true
@@ -132,7 +171,6 @@ Resources:
       Architectures: 
         - arm64
       Handler: app.handler
-      Runtime: python3.10
       CodeUri: src/lambda/function-selected       
       Environment:
         Variables:
@@ -174,11 +212,11 @@ Resources:
     Condition: FunctionsSet
     Type: AWS::Serverless::Function
     Properties:
+      MemorySize: 256
       Architectures: 
         - arm64
       Handler: app.handler
       Timeout: 10
-      Runtime: python3.10
       CodeUri: src/lambda/function-generate-selected      
       Environment:
         Variables:
@@ -198,12 +236,11 @@ Resources:
               Resource: !Sub ${ReportBucket.Arn}/*
             - Effect: Allow
               Action:
-                - 'ec2:DescribeSubnets'
-              Resource: '*'
+                - 's3:ListBucket'
+              Resource: !Sub ${ReportBucket.Arn}
             - Effect: Allow
               Action:
-                - 'ssm:PutParameter'
-                - 'ssm:GetParameter'
+                - 'ec2:DescribeSubnets'
               Resource: '*'
             - Effect: Allow
               Action:
@@ -222,36 +259,7 @@ Resources:
   
 ############################################### Shared Resources ###############################################       
   
-  GeneratePresigns:
-    Type: AWS::Serverless::Function
-    Properties:
-      Architectures: 
-        - arm64
-      Handler: app.handler
-      Runtime: python3.10
-      CodeUri: src/lambda/function-gen-presign       
-      Environment:
-        Variables:
-          S3_BUCKET: !Ref ReportBucket
-      Policies:
-        - Version: '2012-10-17' 
-          Statement:
-            - Effect: Allow
-              Action:
-                - 's3:GetObject'
-                - 's3:PutObject'
-              Resource: !Sub ${ReportBucket.Arn}/*
-            - Effect: Allow
-              Action:
-                - 'ssm:PutParameter'
-                - 'ssm:GetParameter'
-              Resource: '*'
-
-  GeneratePresignsLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub /aws/lambda/${GeneratePresigns}
-      RetentionInDays: 14
+  
 
   SfnLogGroup:
     Type: AWS::Logs::LogGroup
@@ -349,16 +357,7 @@ Resources:
                 - 'servicequotas:ListServiceQuotas'
                 - 'servicequotas:GetServiceQuotas'
               Resource: '*'
-        - PolicyName: SSMParam
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-            -
-              Effect: Allow
-              Action:
-                - 'ssm:PutParameter'
-                - 'ssm:GetParameter'
-              Resource: '*'
+        
 
 #############################################################################################################################################
 

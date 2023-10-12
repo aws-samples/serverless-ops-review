@@ -270,25 +270,16 @@
       },
       "RemoveMappingsFromInput": {
         "Type": "Pass",
-        "Next": "ListLambdaQuotas",
+        "Next": "GenerateReport",
         "Parameters": {
           "Bucket.$": "$.Bucket",
           "FunctionsObject.$": "$.FunctionsObject",
           "Prefix.$": "$.Prefix"
         }
       },
-      "ListLambdaQuotas": {
-        "Type": "Task",
-        "Next": "GenerateReport",
-        "Parameters": {
-          "ServiceCode": "lambda"
-        },
-        "Resource": "arn:aws:states:::aws-sdk:servicequotas:listServiceQuotas",
-        "ResultPath": "$.ServiceQuotas"
-      },
       "GenerateReport": {
         "Type": "Task",
-        "Next": "GeneratePresigns",
+        "End": true,
         "Resource": "arn:aws:states:::lambda:invoke",
         "Parameters": {
           "Payload.$": "$",
@@ -308,29 +299,6 @@
           }
         ],
         "OutputPath": "$.Payload"
-      },
-      "GeneratePresigns": {
-        "Type": "Task",
-        "Resource": "arn:aws:states:::lambda:invoke",
-        "OutputPath": "$.Payload",
-        "Parameters": {
-          "FunctionName": "${GenPresignLambda}",
-          "Payload.$": "$"
-        },
-        "Retry": [
-          {
-            "ErrorEquals": [
-              "Lambda.ServiceException",
-              "Lambda.AWSLambdaException",
-              "Lambda.SdkClientException",
-              "Lambda.TooManyRequestsException"
-            ],
-            "IntervalSeconds": 2,
-            "MaxAttempts": 6,
-            "BackoffRate": 2
-          }
-        ],
-        "End": true
       }
     }
     
