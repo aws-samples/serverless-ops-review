@@ -1,108 +1,65 @@
 {
   "Comment": "This StateMachine fetches information related to Lambda functions for the purpose of AWS provided Operational Review.",
-  "StartAt": "Parallel",
+  "StartAt": "GenerateFolder",
   "States": {
-    "Parallel": {
-      "Type": "Parallel",
-      "Next": "ListAllFunctions",
-      "Branches": [
+    "GenerateFolder": {
+      "Type": "Pass",
+      "Next": "ListFunctions",
+      "Parameters": {
+        "FolderKey.$": "States.Format('review-{}', $$.State.EnteredTime)"
+      }
+    },
+    "ListFunctions": {
+      "Next": "IsNextMarkerPresent",
+      "Parameters": {
+        "FunctionVersion": "ALL"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:lambda:listFunctions",
+      "Type": "Task",
+      "ResultPath": "$.SetOfFunctions",
+      "Retry": [
         {
-          "StartAt": "PutIndex",
-          "States": {
-            "PutIndex": {
-              "Type": "Task",
-              "Parameters": {
-                "Name": "OpsReviewIndex",
-                "Value": "0",
-                "Type": "String",
-                "Overwrite": true
-              },
-              "Resource": "arn:aws:states:::aws-sdk:ssm:putParameter",
-              "End": true
-            }
-          }
-        },
-        {
-          "StartAt": "CreateReportUrlsParam",
-          "States": {
-            "CreateReportUrlsParam": {
-              "Type": "Task",
-              "End": true,
-              "Parameters": {
-                "Name": "ReportUrls",
-                "Value": "None",
-                "Type": "StringList",
-                "Overwrite": true
-              },
-              "Resource": "arn:aws:states:::aws-sdk:ssm:putParameter"
-            }
-          }
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "BackoffRate": 2,
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3
         }
       ]
     },
-    "ErrorCatchAll": {
-      "End": true,
-      "Parameters": {
-        "Body.$": "$",
-        "Bucket": "${ReportBucketName}",
-        "Key.$": "States.Format('error-all-{}.json', $$.State.EnteredTime)"
-      },
-      "Resource": "arn:aws:states:::aws-sdk:s3:putObject",
-      "Type": "Task"
-    },
-    "ListAllFunctions": {
-      "Next": "IsMarkerPresent",
-      "Parameters": {},
-      "Resource": "arn:aws:states:::aws-sdk:lambda:listFunctions",
-      "Type": "Task"
-    },
-    "IsMarkerPresent": {
+    "IsNextMarkerPresent": {
       "Type": "Choice",
       "Choices": [
         {
           "Not": {
-            "Variable": "$.NextMarker",
+            "Variable": "$.SetOfFunctions.NextMarker",
             "IsPresent": true
           },
-          "Next": "SetNextMarkerNone"
+          "Next": "MarkerNotPresent"
         }
       ],
-      "Default": "PutNextMarker"
+      "Default": "MarkerPresent"
     },
-    "SetNextMarkerNone": {
-      "Type": "Task",
-      "Next": "MapAllFunctions",
+    "MarkerPresent": {
+      "Type": "Pass",
       "Parameters": {
-        "Name": "NextMarker",
-        "Value": "None",
-        "Type": "String",
-        "Overwrite": true
+        "FolderKey.$": "$.FolderKey",
+        "NextMarker.$": "$.SetOfFunctions.NextMarker",
+        "Functions.$": "$.SetOfFunctions.Functions"
       },
-      "Resource": "arn:aws:states:::aws-sdk:ssm:putParameter",
-      "ResultPath": null
+      "Next": "MapAllFunctions"
     },
-    "PutNextMarker": {
-      "Type": "Task",
-      "Next": "MapAllFunctions",
+    "MarkerNotPresent": {
+      "Type": "Pass",
       "Parameters": {
-        "Name": "NextMarker",
-        "Value.$": "$.NextMarker",
-        "Type": "String",
-        "Overwrite": true
+        "FolderKey.$": "$.FolderKey",
+        "NextMarker": "None",
+        "Functions.$": "$.SetOfFunctions.Functions"
       },
-      "Resource": "arn:aws:states:::aws-sdk:ssm:putParameter",
-      "ResultPath": null
+      "Next": "MapAllFunctions"
     },
     "MapAllFunctions": {
-      "Catch": [
-        {
-          "Comment": "Error catch.",
-          "ErrorEquals": [
-            "States.TaskFailed"
-          ],
-          "Next": "ErrorCatchAll"
-        }
-      ],
       "ItemProcessor": {
         "ProcessorConfig": {
           "Mode": "INLINE"
@@ -267,96 +224,164 @@
         }
       },
       "ItemsPath": "$.Functions",
+      "Type": "Map",
+      "Next": "RemoveDuplicates",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "BackoffRate": 2,
+          "IntervalSeconds": 0,
+          "MaxAttempts": 3
+        }
+      ],
+      "ResultPath": "$.ProcessedFunctions"
+    },
+    "RemoveDuplicates": {
+      "Type": "Pass",
       "Next": "S3PutAllFunctions",
-      "Type": "Map"
+      "Parameters": {
+        "FolderKey.$": "$.FolderKey",
+        "NextMarker.$": "$.NextMarker",
+        "Functions.$": "$.ProcessedFunctions"
+      }
+    },
+    "ListFunctionsCntd": {
+      "Next": "IsNextMarkerPresent",
+      "Parameters": {
+        "FunctionVersion": "ALL",
+        "Marker.$": "$.NextMarker"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:lambda:listFunctions",
+      "Type": "Task",
+      "ResultPath": "$.SetOfFunctions",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "BackoffRate": 2,
+          "IntervalSeconds": 2,
+          "MaxAttempts": 4
+        }
+      ]
     },
     "S3PutAllFunctions": {
-      "Next": "GetRecommendations",
+      "Next": "FilterParams",
       "Parameters": {
-        "Body.$": "$",
+        "Body.$": "$.Functions",
         "Bucket": "${ReportBucketName}",
-        "Key.$": "States.Format('review-{}/all-functions.json', $$.State.EnteredTime)"
+        "Key.$": "States.Format('{}/functions/{}.json', $.FolderKey, States.UUID())"
       },
       "Resource": "arn:aws:states:::aws-sdk:s3:putObject",
       "Type": "Task",
-      "ResultSelector": {
+      "ResultPath": "$.Output",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "BackoffRate": 2,
+          "IntervalSeconds": 1,
+          "MaxAttempts": 2
+        }
+      ]
+    },
+    "FilterParams": {
+      "Type": "Pass",
+      "Next": "RerunCheck",
+      "Parameters": {
         "Bucket": "${ReportBucketName}",
-        "Prefix.$": "States.Format('review-{}', $$.State.EnteredTime)",
-        "FunctionsObject": "all-functions.json"
+        "FolderKey.$": "$.FolderKey",
+        "NextMarker.$": "$.NextMarker"
       }
+    },
+    "RerunCheck": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Not": {
+            "Variable": "$.NextMarker",
+            "StringEquals": "None"
+          },
+          "Next": "Wait"
+        }
+      ],
+      "Default": "GetRecommendations"
+    },
+    "Wait": {
+      "Type": "Wait",
+      "Seconds": 3,
+      "Next": "ListFunctionsCntd"
     },
     "GetRecommendations": {
       "Type": "Task",
       "Parameters": {},
       "Resource": "arn:aws:states:::aws-sdk:computeoptimizer:getLambdaFunctionRecommendations",
       "ResultPath": "$.Recommendations",
-      "Next": "RecommendationsToS3"
+      "Next": "RecommendationsToS3",
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed"
+          ],
+          "BackoffRate": 2,
+          "IntervalSeconds": 1,
+          "MaxAttempts": 2
+        }
+      ]
     },
     "RecommendationsToS3": {
       "Type": "Task",
       "Parameters": {
-        "Body.$": "$",
-        "Bucket.$": "$.Bucket",
-        "Key.$": "States.Format('{}/recommendations.json', $.Prefix)"
+        "Body.$": "$.Recommendations.LambdaFunctionRecommendations",
+        "Bucket": "${ReportBucketName}",
+        "Key.$": "States.Format('{}/recommendations.json', $.FolderKey)"
       },
       "Resource": "arn:aws:states:::aws-sdk:s3:putObject",
       "Next": "FilterRecommendationsOutput",
-      "ResultPath": null
-    },
-    "FilterRecommendationsOutput": {
-      "Type": "Pass",
-      "Next": "ListEventSourceMappings",
-      "Parameters": {
-        "Bucket.$": "$.Bucket",
-        "FunctionsObject.$": "$.FunctionsObject",
-        "Prefix.$": "$.Prefix"
-      }
-    },
-    "ListEventSourceMappings": {
-      "Type": "Task",
-      "Next": "EventSourceMappingsToS3",
-      "Parameters": {},
-      "Resource": "arn:aws:states:::aws-sdk:lambda:listEventSourceMappings",
-      "ResultPath": "$.EventSourceMappings",
+      "ResultPath": null,
       "Retry": [
         {
           "ErrorEquals": [
             "States.ALL"
           ],
+          "BackoffRate": 2,
           "IntervalSeconds": 1,
-          "MaxAttempts": 5,
-          "BackoffRate": 1.5
+          "MaxAttempts": 2
         }
       ]
     },
-    "EventSourceMappingsToS3": {
-      "Type": "Task",
-      "Next": "RemoveMappingsFromInput",
-      "Parameters": {
-        "Body.$": "$",
-        "Bucket.$": "$.Bucket",
-        "Key.$": "States.Format('{}/esms.json', $.Prefix)"
-      },
-      "Resource": "arn:aws:states:::aws-sdk:s3:putObject",
-      "ResultPath": null
-    },
-    "RemoveMappingsFromInput": {
+    "FilterRecommendationsOutput": {
       "Type": "Pass",
-      "Next": "ListLambdaQuotas",
+      "Next": "ListESMsAndSaveToS3",
       "Parameters": {
-        "Bucket.$": "$.Bucket",
-        "FunctionsObject.$": "$.FunctionsObject",
-        "Prefix.$": "$.Prefix"
+        "FolderKey.$": "$.FolderKey"
       }
     },
-    "ListLambdaQuotas": {
+    "ListESMsAndSaveToS3": {
       "Type": "Task",
-      "Next": "GenerateReport",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "OutputPath": "$.Payload",
       "Parameters": {
-        "ServiceCode": "lambda"
+        "Payload.$": "$",
+        "FunctionName": "${EsmLambda}"
       },
-      "Resource": "arn:aws:states:::aws-sdk:servicequotas:listServiceQuotas",
-      "ResultPath": "$.ServiceQuotas"
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "GenerateReport"
     },
     "GenerateReport": {
       "Type": "Task",
@@ -379,70 +404,6 @@
         }
       ],
       "OutputPath": "$.Payload",
-      "Next": "RerunTest"
-    },
-    "RerunTest": {
-      "Type": "Choice",
-      "Choices": [
-        {
-          "Variable": "$.rerun",
-          "BooleanEquals": true,
-          "Next": "Wait"
-        }
-      ],
-      "Default": "EndOfReportStatement"
-    },
-    "Wait": {
-      "Type": "Wait",
-      "Seconds": 2,
-      "Next": "ListFunctionsNextMarker"
-    },
-    "ListFunctionsNextMarker": {
-      "Type": "Task",
-      "Next": "CheckMarkerExists",
-      "Parameters": {
-        "Marker.$": "$.nextMarker"
-      },
-      "Resource": "arn:aws:states:::aws-sdk:lambda:listFunctions"
-    },
-    "CheckMarkerExists": {
-      "Type": "Choice",
-      "Choices": [
-        {
-          "Not": {
-            "Variable": "$.NextMarker",
-            "IsPresent": true
-          },
-          "Next": "SetNextMarkerNone"
-        }
-      ],
-      "Default": "PutNextMarker"
-    },
-    "EndOfReportStatement": {
-      "Type": "Pass",
-      "Next": "GeneratePresigns"
-    },
-    "GeneratePresigns": {
-      "Type": "Task",
-      "Resource": "arn:aws:states:::lambda:invoke",
-      "OutputPath": "$.Payload",
-      "Parameters": {
-        "FunctionName": "${GenPresignLambda}",
-        "Payload.$": "$"
-      },
-      "Retry": [
-        {
-          "ErrorEquals": [
-            "Lambda.ServiceException",
-            "Lambda.AWSLambdaException",
-            "Lambda.SdkClientException",
-            "Lambda.TooManyRequestsException"
-          ],
-          "IntervalSeconds": 2,
-          "MaxAttempts": 6,
-          "BackoffRate": 2
-        }
-      ],
       "End": true
     }
   }
