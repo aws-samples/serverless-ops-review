@@ -52,18 +52,16 @@ This tool is using an event-driven approach to automatically trigger resource re
 
 - Open the [AWS Step Functions console](https://console.aws.amazon.com/states/home) and locate the deployed state machine - its name will be provided in the terminal outputs after SAM CLI completes deployment or it can be found within Outputs tab of the deployed CloudFormation stack in CloudFormation console.
 - Locate the latest execution withing the **Executions** section and click on it to open it.
-- Navigate to the list of events and locate the **last** execution event called **ExecutionSucceeded** (you may need to skip through pages of events or click on the last state before the end marker in the execution diagram). The body of this event will contain a list of S3 presigned URLs (valid for an hour), that can be used to access the generated reports.
-- Copy one presigned URL and paste it into a browser to download the report file.
+- Navigate to the list of events and locate the **last** execution event called **ExecutionSucceeded** or you can click on the last execution stap in the workflow diagram. The body of this event will contain an S3 presigned URL (valid for an hour), that can be used to access the generated reports.
+- Copy the presigned URL and paste it into a browser to download the report file.
+- ALternatively you can access the report.html file from every run in past 14 days from the deployed S3 bucket (can be located through the CloudFormation Stack resources or Outputs). Every run has its own timestamped folder.
 
 #### NOTE
-
-- If a report is run for **All** functions in the region and the count of functions exceeds 50, multiple reports will be generated in chunks of up to 50 functions per report.
-- **Each chunk of up to 50 functions will have its own S3 presigned URL in the last State Machine execution event so if you have more than 50 functions in a region, you will need to download each report separately.**
 
 - **Viewing historical reports**
   - All reports and related information is saved on the ReportBucket S3 bucket within a time stamped folder (UTC time stamps).
   - These files can be accessed even if the presigned URL has expired.
-  - The report is saved within index.html page within corresponding report folder.
+  - The report is saved within report.html file within corresponding report folder.
 
 
 ### Triggering a report manually
@@ -85,10 +83,3 @@ This tool is using an event-driven approach to automatically trigger resource re
 
 - Remove all files from the deployed S3 bucket (name can be located in the CloudFormation stack Outputs)
 - Delete the deployed CloudFormation stack using `sam delete` command from terminal from the deployment folder or delete the CloudFormation stack from console.
-
-
-## Versions
-
-- version 1.1.1 updates:
-  - Python 3.9 removed from latest runtimes
-  - Python 3.11 added to latest runtimes
