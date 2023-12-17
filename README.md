@@ -83,4 +83,4 @@ This tool is using an event-driven approach to automatically trigger resource re
 
 - Remove all files from the deployed S3 bucket (name can be located in the CloudFormation stack Outputs)
 - Delete the deployed CloudFormation stack using `sam delete` command from terminal from the deployment folder or delete the CloudFormation stack from console.
-=======
+
