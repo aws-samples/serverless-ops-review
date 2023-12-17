@@ -28,7 +28,7 @@ Conditions:
 Mappings:
   ActRuntimes: 
     AllRuntimes:
-      Runtimes: 'python3.10,python3.11,nodejs18.x,nodejs16.x,java17,java11,dotnet7,dotnet6,ruby3.2,provided.al2,Container'
+      Runtimes: 'python3.10,python3.11,python3.12,nodejs20.x,nodejs18.x,java21,java17,dotnet7,ruby3.2,provided.al2,provided.al2023,Container'
 
 Resources:
 ############################################### Resources for All functions reporting ###############################################
