@@ -7,20 +7,24 @@ This tool has been created to help evaluate **AWS Serverless services** in bulk 
 ## Currently supported features
 
 - **AWS Lambda**
-  - Risk Warnings:
-    - Multi-AZ warnings evaluate if a function is VPC enabled and if the linked subnets follow multi-AZ approach.
-    - Runtime warnings evaluate if a function runtime is older then latest or two latest runtime versions (only Zip type supported)
+  - <span style="background-color:red;"><b>RED Danger Zone - Risks</b></span>:
+    - Multi-AZ checks evaluate if a function is VPC enabled and if the linked subnets follow multi-AZ approach.
+    - Runtime checks evaluate if a function runtime has been deprecated (ZIP type only). This check separates functions based on runtime and provides details on all affected function versions.
     - **AWS Trusted Advisor checks** (the following checks are included as part of the report if the AWS Account has [AWS Trusted Advisor](https://docs.aws.amazon.com/awssupport/latest/user/trusted-advisor.html)  enabled):
       - Functions with high error rates
       - Functions with excessive timeouts
+
+  - <span style="background-color:yellow;"><b>YELLOW Warnings Zone</b></span>:
+    - Runtime checks that evaluate if a function runtime versions is scheduled to be deprecated in the near future.
   
-  - Optimization Recommendations:
+  - <span style="background-color:navy;color:white"><b>BLUE Optimization Zone - Recommendations</b></span>:
     - Provides optimization recommendations focused on function memory and benefits of optimizing (duration and cost).
       - This information is pulled from AWS Compute Optimizer so there has to be historical usage available.
     - Lists functions using x86 architecture type and recommends converting to arm64 (Graviton2).
 
-  - List of reviewed functions:
-    - Provides the list of reviewed functions with their configuration as well as Event Source Mapping configuration (if present).
+  - <span style="background-color:grey"><b>Reviewed Functions - Configurations</b></span>:
+    - Provides the list of reviewed functions with their configurations.
+    - Provides a list of function event source mappings configurations.
 
 ## Architecture
 

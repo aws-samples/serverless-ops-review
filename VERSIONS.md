@@ -1,5 +1,10 @@
 # Serverless Operational Review Tool Versions
 
+- **Version 1.3.0**
+  - Added evaluation of deprecated runtimes and runtimes that are scheduled to deprecate, including blocked update and creation dates.
+  - Functions with deprecated runtime versions allocated to RED Danger Zone.
+  - Functions with runtime versions scheduled to deprecate allocated to YELLOW Warning Zone.
+
 - **Version 1.2.1**
   - Added runtimes : Python 12, Node.js 20, Java 21, OS-only Runtime Amazon Linux 2023
   - Removed runtimes: Java 11, Node.js 16, .NET 6

@@ -2,8 +2,9 @@
 # SPDX-License-Identifier: MIT-0
 
 import json, os, copy
-import boto3
+import boto3, requests
 from jinja2 import Template
+from bs4 import BeautifulSoup
 
 s3 = boto3.client('s3')
 s3_r = boto3.resource('s3')
@@ -18,29 +19,52 @@ AWS_ACCOUNT = os.environ['ACCOUNT']
 ACT_RUNTIMES = os.environ['ACT_RUNTIMES']
 STACK_NAME = os.environ['STACK_NAME']
 TA_ENABLED = os.environ['TA_ENABLED']
+DOC_URL = "https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html"
 
 
 ###################################################################################################################################
-#Deprecated runtime evaluation code functionality
+# Runtime evaluation code functionality
 ###################################################################################################################################
-def check_deprecated_runtime(fns):
-    run_check = fns
-    act_runtimes = str.split(ACT_RUNTIMES, ',')
-    
-    for fn in run_check:
-        match = False
-        if fn['PackageType'] == 'Image':
-            fn['Runtime'] = 'Container'
-        for run in act_runtimes:
-            if run == fn['Runtime']:
-                match = True
+def check_dep_runtime(fns,dep_runs):
+    # Create a dictionary to map Identifiers to runtime details
+    runtime_map = {item['Identifier']: {
+        'Deprecation date': item['Deprecation date'],
+        'Block function create': item['Block function create'],
+        'Block function update': item['Block function update']
+    } for item in dep_runs['Deprecated Runtimes']}
+
+    # Iterate through the function data and append the runtime details
+    for function in fns:
+        runtime = function['Runtime']
+        for identifier, details in runtime_map.items():
+            if runtime == identifier:
+                function['Deprecation date'] = details['Deprecation date']
+                function['Block function create'] = details['Block function create']
+                function['Block function update'] = details['Block function update']
                 break
-        if match == False:
-            fn['Message'] = 'Function is using older or deprecated runtime, consider updating.'
-        else:
-            fn['Message'] = 'Function runtime is one of latest.'
     
-    return run_check
+    return fns
+
+def check_sup_runtime(fns,sup_runs):
+    # Create a dictionary to map Identifiers to runtime details
+    runtime_map = {item['Identifier']: {
+        'Deprecation date': item['Deprecation date'],
+        'Block function create': item['Block function create'],
+        'Block function update': item['Block function update']
+    } for item in sup_runs['Supported Runtimes']}
+
+    # Iterate through the function data and append the runtime details
+    for function in fns:
+        runtime = function['Runtime']
+        for identifier, details in runtime_map.items():
+            if runtime == identifier:
+                function['Deprecation date'] = details['Deprecation date']
+                function['Block function create'] = details['Block function create']
+                function['Block function update'] = details['Block function update']
+                break
+    
+    return fns
+
 
 ###################################################################################################################################
 
@@ -164,6 +188,68 @@ def check_multi_az(fns):
 
 ###################################################################################################################################
 
+###################################################################################################################################
+#Deprecated runtime fetch:
+###################################################################################################################################
+def fetch_deprecated_runtimes(dep_run_soup):
+    """
+    Fetch the list of deprecated runtimes from the AWS Lambda docs
+    """
+    # Find the Deprecated Runtime table
+    element = dep_run_soup.find(id="runtimes-deprecated")
+    table = element.find_next("table")
+
+    # Extract header row  
+    headers = [header.text for header in table.find('thead').find_all('tr')]
+    headers = headers[1]
+    headers = headers.split('\n')
+    headers = headers[1:-1]
+
+    rows = []
+
+    for row in table.find_all('tr')[1:]:
+        cells = row.find_all('td')
+        data = [cell.text for cell in cells]
+        data = [line.strip() for line in data]
+        rows.append(dict(zip(headers, data)))
+    rows = rows[1:]
+    
+
+    return rows
+###################################################################################################################################
+
+###################################################################################################################################
+#Supported runtime fetch:
+###################################################################################################################################
+
+def fetch_supported_runtimes(sup_run_soup):
+  """
+  Fetch the list of supported runtimes from the AWS Lambda docs
+  """
+  # Find the Supported Runtime table
+  element = sup_run_soup.find(id="runtimes-supported")
+  table = element.find_next("table")
+
+  # Extract header row  
+  headers = [header.text for header in table.find('thead').find_all('tr')]
+  headers = headers[1]
+  headers = headers.split('\n')
+  headers = headers[1:-1]
+
+  rows = []
+
+  for row in table.find_all('tr')[1:]:
+    cells = row.find_all('td')
+    data = [cell.text for cell in cells]
+    data = [line.strip() for line in data]
+    rows.append(dict(zip(headers, data)))
+  rows = rows[1:]
+  
+
+  return rows
+
+###################################################################################################################################
+
 def handler(event, context):
     #List function config objects from S3:
     s3_prefix = event['Prefix']
@@ -195,33 +281,110 @@ def handler(event, context):
     
     
     #################################################################################           
-    #Deprecated runtime evaluation method pointer:
-    #################################################################################           
-    run_fns = copy.deepcopy(functions)  
-    warnings_dep_runtime = check_deprecated_runtime(run_fns)
+    #Runtime evaluation method pointer:
+    #################################################################################
+    
+    html = requests.get(DOC_URL)
+    html = html.text
+
+    soup = BeautifulSoup(html, 'html.parser')
+    
+    supported_runtimes = {'Supported Runtimes': fetch_supported_runtimes(soup)}
+  
+    deprecated_runtimes = {'Deprecated Runtimes': fetch_deprecated_runtimes(soup)}
+               
+    dep_fns = copy.deepcopy(functions)  
+    dep_runtime_fns = check_dep_runtime(dep_fns,deprecated_runtimes)
+    sup_fns = copy.deepcopy(functions)
+    sup_runtime_fns = check_sup_runtime(sup_fns,supported_runtimes)
+    
+    # Separate deprecated functions by runtime:
     py_dep_run = []
+    for function in dep_runtime_fns:
+        runtime = function['Runtime']
+        if runtime.startswith('python') and 'Deprecation date' in function and function['Deprecation date'] != '':
+            py_dep_run.append(function)
+    
     no_dep_run = []
+    for function in dep_runtime_fns:
+        runtime = function['Runtime']
+        if runtime.startswith('nodejs') and 'Deprecation date' in function and function['Deprecation date'] != '':
+            no_dep_run.append(function)
+    
     ja_dep_run = []
+    for function in dep_runtime_fns:
+        runtime = function['Runtime']
+        if runtime.startswith('java') and 'Deprecation date' in function and function['Deprecation date'] != '':
+            ja_dep_run.append(function)
+    
     do_dep_run = []
+    for function in dep_runtime_fns:
+        runtime = function['Runtime']
+        if runtime.startswith('dotnet') and 'Deprecation date' in function and function['Deprecation date'] != '':
+            do_dep_run.append(function)
+    
     ru_dep_run = []
+    for function in dep_runtime_fns:
+        runtime = function['Runtime']
+        if runtime.startswith('ruby') and 'Deprecation date' in function and function['Deprecation date'] != '':
+            ru_dep_run.append(function)
+    
     go_dep_run = []
+    for function in dep_runtime_fns:
+        runtime = function['Runtime']
+        if runtime.startswith('golang') and 'Deprecation date' in function and function['Deprecation date'] != '':
+            go_dep_run.append(function)
+    
     cu_dep_run = []
-    for run_warning in warnings_dep_runtime:
-        if run_warning['Message'] != 'Function runtime is one of latest.':
-            if run_warning['Runtime'].startswith('python'):
-                py_dep_run.append(run_warning)
-            elif run_warning['Runtime'].startswith('nodejs'):
-                no_dep_run.append(run_warning)
-            elif run_warning['Runtime'].startswith('java'):
-                ja_dep_run.append(run_warning)
-            elif run_warning['Runtime'].startswith('dotnet'):
-                do_dep_run.append(run_warning)
-            elif run_warning['Runtime'].startswith('ruby'):
-                ru_dep_run.append(run_warning)
-            elif run_warning['Runtime'].startswith('golang'):
-                go_dep_run.append(run_warning)
-            elif run_warning['Runtime'].startswith('provided'):
-                cu_dep_run.append(run_warning)
+    for function in dep_runtime_fns:
+        runtime = function['Runtime']
+        if runtime.startswith('provided') and 'Deprecation date' in function and function['Deprecation date'] != '':
+            cu_dep_run.append(function)
+    
+    
+    # Separate supported functions by runtime:
+    py_sup_run = []
+    for function in sup_runtime_fns:
+        runtime = function['Runtime']
+        if runtime.startswith('python') and 'Deprecation date' in function and function['Deprecation date'] != '':
+            py_sup_run.append(function)
+    
+    no_sup_run = []
+    for function in sup_runtime_fns:
+        runtime = function['Runtime']
+        if runtime.startswith('nodejs') and 'Deprecation date' in function and function['Deprecation date'] != '':
+            no_sup_run.append(function)
+    
+    ja_sup_run = []
+    for function in sup_runtime_fns:
+        runtime = function['Runtime']
+        if runtime.startswith('java') and 'Deprecation date' in function and function['Deprecation date'] != '':
+            ja_sup_run.append(function)
+    
+    do_sup_run = []
+    for function in sup_runtime_fns:
+        runtime = function['Runtime']
+        if runtime.startswith('dotnet') and 'Deprecation date' in function and function['Deprecation date'] != '':
+            do_sup_run.append(function)
+    
+    ru_sup_run = []
+    for function in sup_runtime_fns:
+        runtime = function['Runtime']
+        if runtime.startswith('ruby') and 'Deprecation date' in function and function['Deprecation date'] != '':
+            ru_sup_run.append(function)
+    
+    go_sup_run = []
+    for function in sup_runtime_fns:
+        runtime = function['Runtime']
+        if runtime.startswith('golang') and 'Deprecation date' in function and function['Deprecation date'] != '':
+            go_sup_run.append(function)
+    
+    cu_sup_run = []
+    for function in sup_runtime_fns:
+        runtime = function['Runtime']
+        if runtime.startswith('provided') and 'Deprecation date' in function and function['Deprecation date'] != '':
+            cu_sup_run.append(function)
+    
     
     #################################################################################           
     #Trusted Advisor evaluations
@@ -292,16 +455,11 @@ def handler(event, context):
             if fn['FunctionArn'] == esm['FunctionArn']:
                 filtered_esms.append(esm)
                 
-    print(filtered_esms)
-    
-    
-   
-    
     
     #################################################################################
     
     #################################################################################
-    #Create a dict wilh all data that will populate the template
+    #Create a dict with all data that will populate the template
     #################################################################################
     data = {}
     data['account'] = AWS_ACCOUNT
@@ -314,6 +472,13 @@ def handler(event, context):
     data['dep_ruby_functions'] = ru_dep_run
     data['dep_golang_functions'] = go_dep_run
     data['dep_custom_functions'] = cu_dep_run
+    data['sup_python_functions'] = py_sup_run
+    data['sup_nodejs_functions'] = no_sup_run
+    data['sup_java_functions'] = ja_sup_run
+    data['sup_dotnet_functions'] = do_sup_run
+    data['sup_ruby_functions'] = ru_sup_run
+    data['sup_golang_functions'] = go_sup_run
+    data['sup_custom_functions'] = cu_sup_run
     if TA_ENABLED == 'true':
         data['warnings_ta_high_errors'] = warnings_ta_high_errors
         data['warnings_ta_excessive_timeouts'] = warnings_ta_excessive_timeout
